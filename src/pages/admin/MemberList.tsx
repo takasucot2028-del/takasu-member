@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { PageContainer, Card, Input, Button, Table, Th, Td, Badge } from '../../components/UI';
+import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Modal, Alert } from '../../components/UI';
 import { MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { getAllMembers } from '../../api/data';
+import { getAllMembers, registerNewMember } from '../../api/data';
+import { downloadTemplate, parseWorkbook, DEFAULT_IMPORT_PASSWORD, type ImportMember } from '../../utils/memberImport';
 import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
 
@@ -11,7 +12,45 @@ export default function MemberList() {
   const [query, setQuery] = useState('');
   const [showWithdrawn, setShowWithdrawn] = useState(false);
 
-  useEffect(() => { getAllMembers().then(setMembers); }, []);
+  // 一括インポート
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importModal, setImportModal] = useState(false);
+  const [parsed, setParsed] = useState<ImportMember[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+
+  const loadMembers = () => getAllMembers().then(setMembers);
+  useEffect(() => { loadMembers(); }, []);
+
+  const handleFile = async (file: File) => {
+    setImportMsg('');
+    const buffer = await file.arrayBuffer();
+    const { members: ms, errors } = parseWorkbook(buffer);
+    setParsed(ms);
+    setParseErrors(errors);
+  };
+
+  const runImport = async () => {
+    setImporting(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const m of parsed) {
+      try {
+        await registerNewMember(m);
+        ok++;
+      } catch (e) {
+        failed.push(`${m.lastName || m.groupName} ${m.firstName || ''}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    setImporting(false);
+    setImportModal(false);
+    setParsed([]);
+    setParseErrors([]);
+    if (fileRef.current) fileRef.current.value = '';
+    setImportMsg(`${ok}件を登録しました${failed.length ? `（失敗 ${failed.length}件）` : ''}`);
+    await loadMembers();
+  };
 
   const q = query.toLowerCase();
   const filtered = members
@@ -57,7 +96,10 @@ export default function MemberList() {
             退会者を表示
           </label>
           <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setImportModal(true); setImportMsg(''); }}>一括インポート</Button>
         </div>
+
+        {importMsg && <Alert type="success">{importMsg}</Alert>}
 
         <p className="text-xs text-gray-500 mb-2">{filtered.length}件</p>
 
@@ -102,6 +144,50 @@ export default function MemberList() {
           </tbody>
         </Table>
       </Card>
+
+      <Modal open={importModal} onClose={() => setImportModal(false)} title="会員の一括インポート">
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600">
+            テンプレートに既存会員データを記入し、Excel/CSVをアップロードしてください。
+            パスワード未記入の会員は電話番号（数字）、それも無ければ
+            <code className="bg-gray-100 px-1 rounded">{DEFAULT_IMPORT_PASSWORD}</code>
+            が暫定パスワードになります（各自で変更を推奨）。
+          </p>
+
+          <Button size="sm" variant="secondary" onClick={downloadTemplate}>テンプレート出力</Button>
+
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+              className="block w-full text-xs text-gray-600"
+            />
+          </div>
+
+          {parseErrors.length > 0 && (
+            <Alert type="error">
+              <div className="font-medium mb-1">{parseErrors.length}件のエラー（該当行はスキップされます）</div>
+              <ul className="list-disc list-inside max-h-32 overflow-auto">
+                {parseErrors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
+                {parseErrors.length > 20 && <li>…ほか {parseErrors.length - 20} 件</li>}
+              </ul>
+            </Alert>
+          )}
+
+          {parsed.length > 0 && (
+            <Alert type="info">登録可能: <strong>{parsed.length}件</strong></Alert>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button onClick={runImport} disabled={parsed.length === 0 || importing}>
+              {importing ? '登録中…' : `${parsed.length}件を登録`}
+            </Button>
+            <Button variant="secondary" onClick={() => setImportModal(false)} disabled={importing}>キャンセル</Button>
+          </div>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }

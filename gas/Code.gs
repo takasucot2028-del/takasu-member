@@ -47,10 +47,16 @@ function setupSpreadsheet() {
   sheetNames.forEach(name => getSheet(name));
   
   // 管理者アカウント作成
+  // パスワードはリポジトリに平文で残さないため Script Properties から読む。
+  // GAS エディタの「プロジェクトの設定 > スクリプト プロパティ」で
+  //   ADMIN_EMAIL / ADMIN_PASSWORD を設定してから setupSpreadsheet() を実行する。
+  // 未設定の場合はデモ用 admin@takasu-sc.jp / admin123 で作成される（本番では必ず設定すること）。
   const authSheet = getSheet('auth_users');
   if (authSheet.getLastRow() <= 1) {
-    const hash = hashPassword('admin123');
-    authSheet.appendRow(['admin@takasu-sc.jp', hash, 'admin']);
+    const props = PropertiesService.getScriptProperties();
+    const adminEmail = props.getProperty('ADMIN_EMAIL') || 'admin@takasu-sc.jp';
+    const adminPassword = props.getProperty('ADMIN_PASSWORD') || 'admin123';
+    authSheet.appendRow([adminEmail, hashPassword(adminPassword), 'admin']);
   }
 
   // 教室マスタ挿入
@@ -79,6 +85,29 @@ function setupSpreadsheet() {
   }
   
   Logger.log('セットアップ完了');
+}
+
+// 管理者の認証情報を Script Properties (ADMIN_EMAIL / ADMIN_PASSWORD) から再設定する。
+// パスワード変更時に GAS エディタから手動実行する。既存の admin 行があれば更新、なければ追加。
+function resetAdminCredentials() {
+  const props = PropertiesService.getScriptProperties();
+  const adminEmail = props.getProperty('ADMIN_EMAIL');
+  const adminPassword = props.getProperty('ADMIN_PASSWORD');
+  if (!adminEmail || !adminPassword) {
+    throw new Error('Script Properties に ADMIN_EMAIL と ADMIN_PASSWORD を設定してください');
+  }
+  const sheet = getSheet('auth_users');
+  const data = sheet.getDataRange().getValues();
+  const hash = hashPassword(adminPassword);
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] === 'admin') {
+      sheet.getRange(i + 1, 1, 1, 3).setValues([[adminEmail, hash, 'admin']]);
+      Logger.log('管理者認証情報を更新しました');
+      return;
+    }
+  }
+  sheet.appendRow([adminEmail, hash, 'admin']);
+  Logger.log('管理者アカウントを作成しました');
 }
 
 // --- パスワードハッシュ化 ---
