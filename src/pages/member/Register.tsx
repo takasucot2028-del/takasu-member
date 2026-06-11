@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { PageContainer, Card, Field, Input, Select, Button, Alert } from '../../components/UI';
 import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { registerNewMember } from '../../api/data';
+import { registerNewMember, memberLogin } from '../../api/data';
 import type { MemberType, AreaType } from '../../types';
 
 const INITIAL = {
@@ -61,10 +61,16 @@ export default function Register() {
     const { passwordConfirm, ...data } = form;
     void passwordConfirm;
     try {
-      const member = await registerNewMember(data);
-      login(member.id, 'member', member);
-      setSuccess(true);
-      setTimeout(() => navigate('/mypage'), 1500);
+      await registerNewMember(data);
+      // 登録後にログインして正規のセッショントークンを取得（GAS/デモ共通）
+      const auth = await memberLogin(data.email, data.password);
+      if (auth.success && auth.token && auth.member) {
+        login(auth.token, 'member', auth.member);
+        setSuccess(true);
+        setTimeout(() => navigate('/mypage'), 1500);
+      } else {
+        setError('登録は完了しましたが自動ログインに失敗しました。ログイン画面からログインしてください');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '会員登録に失敗しました');
     }

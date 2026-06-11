@@ -15,7 +15,7 @@ export default function MyPage() {
 
   useEffect(() => {
     if (!member || !token) { navigate('/'); return; }
-    getMemberById(token).then(fresh => {
+    getMemberById(member.id).then(fresh => {
       if (fresh) { setMember(fresh); setForm(fresh); }
     });
   }, []);
@@ -32,8 +32,7 @@ export default function MyPage() {
   };
 
   const handleSave = async () => {
-    if (!token) return;
-    const updated = await updateMemberData(token, form);
+    const updated = await updateMemberData(member.id, form);
     if (updated) {
       setMember(updated);
       setEditing(false);
@@ -42,9 +41,8 @@ export default function MyPage() {
   };
 
   const handleWithdraw = async () => {
-    if (!token) return;
     if (!confirm('本当に退会しますか？この操作は取り消せません。')) return;
-    await updateMemberData(token, { isWithdrawn: true });
+    await updateMemberData(member.id, { isWithdrawn: true });
     logout();
     navigate('/');
   };

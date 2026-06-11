@@ -116,11 +116,51 @@ function hashPassword(pw) {
   return raw.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
 }
 
+// --- セッション管理（CacheService・TTL 6時間）---
+// Web App は匿名アクセス可で公開するため、アプリ独自のトークンで認可を行う。
+// ログイン成功時に推測困難なトークンを発行し、role と memberId をキャッシュに保持する。
+var SESSION_TTL_SECONDS = 21600; // 6時間（CacheService の最大）
+
+function issueToken(role, memberId) {
+  const token = genId() + genId(); // 24文字
+  CacheService.getScriptCache().put(
+    'sess_' + token,
+    JSON.stringify({ role: role, memberId: memberId || '' }),
+    SESSION_TTL_SECONDS
+  );
+  return token;
+}
+
+function getSession(token) {
+  if (!token) return null;
+  const raw = CacheService.getScriptCache().get('sess_' + token);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (err) { return null; }
+}
+
+// 認可: 公開アクション以外はトークン必須。管理者専用／本人or管理者を区別する。
+var PUBLIC_ACTIONS = { login: true, adminLogin: true, registerMember: true };
+var SELF_OR_ADMIN_ACTIONS = { getMember: true, updateMember: true, withdrawMember: true };
+
+function enforceAuth(action, body) {
+  if (PUBLIC_ACTIONS[action]) return;
+  const session = getSession(body.token);
+  if (!session) throw new Error('認証が必要です。再度ログインしてください');
+  if (SELF_OR_ADMIN_ACTIONS[action]) {
+    if (session.role === 'admin') return;
+    if (session.memberId && session.memberId === body.memberId) return;
+    throw new Error('この操作を行う権限がありません');
+  }
+  // それ以外はすべて管理者専用
+  if (session.role !== 'admin') throw new Error('管理者権限が必要です');
+}
+
 // --- Web App エンドポイント ---
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     const action = body.action;
+    enforceAuth(action, body); // 認可チェック（失敗時は throw）
     let result;
 
     switch (action) {
@@ -245,8 +285,7 @@ function handleLogin(email, password) {
     return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
   }
   
-  const token = genId();
-  // TODO: トークン管理
+  const token = issueToken('member', member.id);
   member.courseIds = member.courseIds ? member.courseIds.split(',') : [];
   delete member.passwordHash;
   return { success: true, token: token, member: member, role: 'member' };
@@ -258,7 +297,7 @@ function handleAdminLogin(email, password) {
   const hash = hashPassword(password);
   const user = users.find(u => u.email === email && u.passwordHash === hash);
   if (!user) return { success: false, error: 'ログイン情報が正しくありません' };
-  return { success: true, token: genId(), role: 'admin' };
+  return { success: true, token: issueToken('admin', ''), role: 'admin' };
 }
 
 function handleRegister(data) {
