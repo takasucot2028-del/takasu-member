@@ -4,10 +4,16 @@
 // ============================================
 
 // --- 設定 ---
-const SPREADSHEET_ID = '★ここにスプレッドシートIDを入力★';
+// スプレッドシートID は GAS の「プロジェクトの設定 → スクリプト プロパティ」で
+// SPREADSHEET_ID として設定する（公開リポジトリにIDを残さないため）。
+function getSpreadsheetId() {
+  const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if (!id) throw new Error('スクリプト プロパティに SPREADSHEET_ID を設定してください');
+  return id;
+}
 
 function getSheet(name) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.openById(getSpreadsheetId());
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
