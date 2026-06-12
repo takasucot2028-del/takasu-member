@@ -258,9 +258,17 @@ function sheetToObjects(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
   const headers = data[0];
+  const tz = Session.getScriptTimeZone();
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i]; });
+    headers.forEach((h, i) => {
+      const v = row[i];
+      // スプレッドシートが日付文字列を Date 型へ自動変換するため、
+      // 読み取り時に YYYY-MM-DD の文字列へ戻す（生年月日・引落日などの崩れ防止）。
+      obj[h] = (Object.prototype.toString.call(v) === '[object Date]')
+        ? Utilities.formatDate(v, tz, 'yyyy-MM-dd')
+        : v;
+    });
     return obj;
   });
 }
