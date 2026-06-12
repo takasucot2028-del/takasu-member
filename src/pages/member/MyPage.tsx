@@ -7,18 +7,28 @@ import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance } from '.
 import type { Member } from '../../types';
 
 export default function MyPage() {
-  const { member, token, setMember, logout } = useAuth();
+  const { member, members, activeMemberId, setActiveMemberId, token, setMember, setHousehold, logout } = useAuth();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // 初回マウント時、アクティブ会員の最新情報を取得
   useEffect(() => {
     if (!member || !token) { navigate('/'); return; }
     getMemberById(member.id).then(fresh => {
       if (fresh) { setMember(fresh); setForm(fresh); }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 子ども（世帯内会員）を切り替えたらフォームを同期し、編集を閉じる
+  useEffect(() => {
+    if (member) setForm(member);
+    setEditing(false);
+    setMsg(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMemberId]);
 
   if (!member) return null;
 
@@ -41,10 +51,18 @@ export default function MyPage() {
   };
 
   const handleWithdraw = async () => {
-    if (!confirm('本当に退会しますか？この操作は取り消せません。')) return;
+    const label = member.memberType === 'group' ? member.groupName : `${member.lastName} ${member.firstName}`;
+    if (!confirm(`${label} さんを退会しますか？この操作は取り消せません。`)) return;
     await updateMemberData(member.id, { isWithdrawn: true });
-    logout();
-    navigate('/');
+    // 世帯に他の会員が残っていればログインを維持し、いなければログアウト
+    const remaining = members.filter(m => m.id !== member.id);
+    if (remaining.length === 0) {
+      logout();
+      navigate('/');
+    } else {
+      setHousehold(remaining);
+      setMsg({ type: 'success', text: `${label} さんの退会処理が完了しました` });
+    }
   };
 
   const annualFee = calcAnnualFee(member.memberType, member.areaType);
@@ -54,6 +72,32 @@ export default function MyPage() {
   return (
     <PageContainer title="マイページ">
       <div className="max-w-2xl mx-auto space-y-4">
+        {/* 世帯切替（同一メールに複数会員がいる場合のみ表示） */}
+        {members.length > 1 && (
+          <Card>
+            <h3 className="font-medium text-gray-700 text-sm mb-2">家族の切り替え</h3>
+            <div className="flex flex-wrap gap-2">
+              {members.map(m => {
+                const label = m.memberType === 'group' ? m.groupName : `${m.lastName} ${m.firstName}`;
+                const active = m.id === activeMemberId;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setActiveMemberId(m.id)}
+                    className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
         {msg && <Alert type={msg.type}>{msg.text}</Alert>}
 
         {/* 会員情報カード */}

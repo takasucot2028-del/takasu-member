@@ -91,7 +91,8 @@ export interface GroupBilling {
 export interface AuthResponse {
   success: boolean;
   token?: string;
-  member?: Member;
+  member?: Member;        // 後方互換（単一・世帯の先頭）
+  members?: Member[];     // 世帯（同一メールを共有する会員一覧）
   role?: 'member' | 'admin';
   error?: string;
 }

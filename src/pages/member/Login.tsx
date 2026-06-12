@@ -15,8 +15,9 @@ export default function MemberLogin() {
     e.preventDefault();
     setError('');
     const result = await memberLogin(email, password);
-    if (result.success && result.token && result.member) {
-      login(result.token, 'member', result.member);
+    const household = result.members ?? (result.member ? [result.member] : []);
+    if (result.success && result.token && household.length > 0) {
+      login(result.token, 'member', household);
       navigate('/mypage');
     } else {
       setError(result.error || 'ログインに失敗しました');

@@ -62,13 +62,16 @@ export function initAdmin() {
 
 // --- 認証 ---
 export function memberLogin(email: string, password: string): AuthResponse {
-  const members = loadMembers();
-  const member = members.find(m => m.email === email && !m.isWithdrawn);
-  if (!member) return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
-  // デモ用：パスワード = email のまま（本番はハッシュ比較）
-  const stored = JSON.parse(localStorage.getItem(`tsc_pw_${member.id}`) || '""');
-  if (stored !== password) return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
-  return { success: true, token: member.id, member, role: 'member' };
+  // 同一メール＋パスワードに一致する全員（世帯）を返す。兄弟が同じメール・
+  // パスワードを共有する場合、保護者は1回のログインで全員を管理できる。
+  const all = loadMembers().filter(m => m.email === email && !m.isWithdrawn);
+  const matched = all.filter(m =>
+    JSON.parse(localStorage.getItem(`tsc_pw_${m.id}`) || '""') === password
+  );
+  if (matched.length === 0) {
+    return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
+  }
+  return { success: true, token: matched[0].id, members: matched, member: matched[0], role: 'member' };
 }
 
 export function adminLoginCheck(email: string, password: string): AuthResponse {

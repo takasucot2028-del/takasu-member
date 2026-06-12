@@ -130,11 +130,11 @@ function hashPassword(pw) {
 // ログイン成功時に推測困難なトークンを発行し、role と memberId をキャッシュに保持する。
 var SESSION_TTL_SECONDS = 21600; // 6時間（CacheService の最大）
 
-function issueToken(role, memberId) {
+function issueToken(role, memberIds) {
   const token = genId() + genId(); // 24文字
   CacheService.getScriptCache().put(
     'sess_' + token,
-    JSON.stringify({ role: role, memberId: memberId || '' }),
+    JSON.stringify({ role: role, memberIds: memberIds || [] }),
     SESSION_TTL_SECONDS
   );
   return token;
@@ -157,7 +157,8 @@ function enforceAuth(action, body) {
   if (!session) throw new Error('認証が必要です。再度ログインしてください');
   if (SELF_OR_ADMIN_ACTIONS[action]) {
     if (session.role === 'admin') return;
-    if (session.memberId && session.memberId === body.memberId) return;
+    // 世帯（同一メールの複数会員）のいずれかなら本人として許可
+    if (session.memberIds && session.memberIds.indexOf(body.memberId) !== -1) return;
     throw new Error('この操作を行う権限がありません');
   }
   // それ以外はすべて管理者専用
@@ -286,18 +287,20 @@ function nextMemberNumber(sheet) {
 function handleLogin(email, password) {
   const sheet = getSheet('members');
   const members = sheetToObjects(sheet);
-  const member = members.find(m => m.email === email && !m.isWithdrawn);
-  if (!member) return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
-  
   const hash = hashPassword(password);
-  if (member.passwordHash !== hash) {
+  // 同一メール＋パスワードに一致する全員（世帯）を返す
+  const matched = members.filter(function (m) {
+    return m.email === email && !m.isWithdrawn && m.passwordHash === hash;
+  });
+  if (matched.length === 0) {
     return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
   }
-  
-  const token = issueToken('member', member.id);
-  member.courseIds = member.courseIds ? member.courseIds.split(',') : [];
-  delete member.passwordHash;
-  return { success: true, token: token, member: member, role: 'member' };
+  matched.forEach(function (m) {
+    m.courseIds = m.courseIds ? String(m.courseIds).split(',') : [];
+    delete m.passwordHash;
+  });
+  const token = issueToken('member', matched.map(function (m) { return m.id; }));
+  return { success: true, token: token, members: matched, member: matched[0], role: 'member' };
 }
 
 function handleAdminLogin(email, password) {
@@ -306,7 +309,7 @@ function handleAdminLogin(email, password) {
   const hash = hashPassword(password);
   const user = users.find(u => u.email === email && u.passwordHash === hash);
   if (!user) return { success: false, error: 'ログイン情報が正しくありません' };
-  return { success: true, token: issueToken('admin', ''), role: 'admin' };
+  return { success: true, token: issueToken('admin', []), role: 'admin' };
 }
 
 function handleRegister(data) {

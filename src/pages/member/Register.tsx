@@ -64,8 +64,9 @@ export default function Register() {
       await registerNewMember(data);
       // 登録後にログインして正規のセッショントークンを取得（GAS/デモ共通）
       const auth = await memberLogin(data.email, data.password);
-      if (auth.success && auth.token && auth.member) {
-        login(auth.token, 'member', auth.member);
+      const household = auth.members ?? (auth.member ? [auth.member] : []);
+      if (auth.success && auth.token && household.length > 0) {
+        login(auth.token, 'member', household);
         setSuccess(true);
         setTimeout(() => navigate('/mypage'), 1500);
       } else {

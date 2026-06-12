@@ -51,6 +51,30 @@ function str(v: unknown): string {
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
+// Excel のシリアル日付値（例 42622）を YYYY-MM-DD に変換。
+// Excel/CSV の日付セルは数値で渡ることがあるため、生年月日はこの関数で正規化する。
+function excelSerialToISO(serial: number): string {
+  // Excel の基準日 1899-12-30 から 1970-01-01 までの日数 = 25569
+  const ms = Math.round((serial - 25569) * 86400 * 1000);
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateStr(v: unknown): string {
+  if (v === undefined || v === null || v === '') return '';
+  if (v instanceof Date) {
+    const y = v.getUTCFullYear();
+    const m = String(v.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(v.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  if (typeof v === 'number') return excelSerialToISO(v);
+  return String(v).trim();
+}
+
 // 教室名はスペースを含む（例「鷹栖REDWOLVES 男子U15」）ため、区切りは
 // カンマ類（半角/全角カンマ・読点）のみとし、スペースでは区切らない。
 // 照合時は前後・内部のスペース（全角含む）を無視して比較し、表記ゆれを吸収する。
@@ -122,7 +146,7 @@ export function parseWorkbook(buffer: ArrayBuffer): ParseResult {
       lastName, firstName,
       lastNameKana: str(row['セイ']),
       firstNameKana: str(row['メイ']),
-      birthDate: str(row['生年月日']),
+      birthDate: dateStr(row['生年月日']),
       postalCode: str(row['郵便番号']),
       address: str(row['住所']),
       areaType,
