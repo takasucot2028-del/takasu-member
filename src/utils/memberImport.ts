@@ -25,8 +25,9 @@ const TYPE_MAP: Record<string, MemberType> = {
 };
 const AREA_MAP: Record<string, AreaType> = { '町内': 'in_town', '町外': 'out_of_town' };
 
-const COURSE_BY_NAME: Record<string, string> = Object.fromEntries(
-  COURSES.map(c => [c.name, c.id])
+// 教室名からスペース（全角含む）を除いた形をキーにした逆引き表（照合の表記ゆれ吸収用）
+const COURSE_BY_NORM: Record<string, string> = Object.fromEntries(
+  COURSES.map(c => [c.name.replace(/\s+/g, ''), c.id])
 );
 
 export interface ImportMember extends Record<string, unknown> {
@@ -50,12 +51,14 @@ function str(v: unknown): string {
   return v === undefined || v === null ? '' : String(v).trim();
 }
 
-// 教室名（カンマ／読点／空白区切り）を courseId 配列へ変換。未知の教室名は unknown に積む。
+// 教室名はスペースを含む（例「鷹栖REDWOLVES 男子U15」）ため、区切りは
+// カンマ類（半角/全角カンマ・読点）のみとし、スペースでは区切らない。
+// 照合時は前後・内部のスペース（全角含む）を無視して比較し、表記ゆれを吸収する。
 function parseCourses(raw: string): { ids: string[]; unknown: string[] } {
   const ids: string[] = [];
   const unknown: string[] = [];
-  raw.split(/[,、\s]+/).map(s => s.trim()).filter(Boolean).forEach(name => {
-    const id = COURSE_BY_NAME[name];
+  raw.split(/[,，、]+/).map(s => s.trim()).filter(Boolean).forEach(name => {
+    const id = COURSE_BY_NORM[name.replace(/\s+/g, '')];
     if (id) ids.push(id);
     else unknown.push(name);
   });
