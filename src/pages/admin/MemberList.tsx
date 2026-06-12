@@ -29,22 +29,28 @@ export default function MemberList() {
     const buffer = await file.arrayBuffer();
     const { members: ms, errors } = parseWorkbook(buffer);
 
-    // メールアドレスで重複を除外（既存会員との重複・ファイル内の重複）。
-    // これにより同じファイルを2回アップロードしても二重登録されない。
+    // 兄弟は保護者の同じメールを共有しうるため、重複判定はメールだけでなく
+    // 氏名・生年月日も含めた複合キーで行う。これにより
+    // ・兄弟（同メール・別氏名/生年月日）は別人として登録される
+    // ・同一人物の二重アップロードはスキップされる
+    const keyOf = (m: { email?: unknown; lastName?: unknown; firstName?: unknown; groupName?: unknown; birthDate?: unknown }) =>
+      [m.email, m.lastName, m.firstName, m.groupName, m.birthDate]
+        .map(v => String(v ?? '').trim().toLowerCase())
+        .join('|');
     const existing = await getAllMembers();
-    const existingEmails = new Set(existing.map(m => String(m.email || '').toLowerCase()));
+    const existingKeys = new Set(existing.map(keyOf));
     const seen = new Set<string>();
     const toRegister: ImportMember[] = [];
     const skips: string[] = [];
     ms.forEach(m => {
-      const email = String(m.email || '').toLowerCase();
+      const key = keyOf(m);
       const name = `${m.lastName || m.groupName || ''} ${m.firstName || ''}`.trim();
-      if (existingEmails.has(email)) {
-        skips.push(`${name}（${m.email}）: 既存会員と重複`);
-      } else if (seen.has(email)) {
+      if (existingKeys.has(key)) {
+        skips.push(`${name}（${m.email}）: 既存会員と重複（氏名・生年月日が一致）`);
+      } else if (seen.has(key)) {
         skips.push(`${name}（${m.email}）: ファイル内で重複`);
       } else {
-        seen.add(email);
+        seen.add(key);
         toRegister.push(m);
       }
     });
