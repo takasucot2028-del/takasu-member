@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Modal, Alert } from '../../components/UI';
 import { MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { getAllMembers, registerNewMember } from '../../api/data';
+import { getAllMembers, bulkRegisterMembers } from '../../api/data';
 import { downloadTemplate, parseWorkbook, DEFAULT_IMPORT_PASSWORD, type ImportMember } from '../../utils/memberImport';
 import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
@@ -63,14 +63,11 @@ export default function MemberList() {
   const runImport = async () => {
     setImporting(true);
     let ok = 0;
-    const failed: string[] = [];
-    for (const m of parsed) {
-      try {
-        await registerNewMember(m);
-        ok++;
-      } catch (e) {
-        failed.push(`${m.lastName || m.groupName} ${m.firstName || ''}: ${e instanceof Error ? e.message : String(e)}`);
-      }
+    let errMsg = '';
+    try {
+      ok = await bulkRegisterMembers(parsed);
+    } catch (e) {
+      errMsg = e instanceof Error ? e.message : String(e);
     }
     setImporting(false);
     setImportModal(false);
@@ -78,7 +75,7 @@ export default function MemberList() {
     setParseErrors([]);
     setSkipped([]);
     if (fileRef.current) fileRef.current.value = '';
-    setImportMsg(`${ok}件を登録しました${failed.length ? `（失敗 ${failed.length}件）` : ''}`);
+    setImportMsg(errMsg ? `登録に失敗しました: ${errMsg}` : `${ok}件を登録しました`);
     await loadMembers();
   };
 

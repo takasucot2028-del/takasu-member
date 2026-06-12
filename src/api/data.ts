@@ -54,6 +54,20 @@ export async function registerNewMember(
   return res.data;
 }
 
+// 既存会員の一括登録（移行用）。GAS では1リクエストで全件追記、デモでは順次登録。
+// 登録できた件数を返す。
+export async function bulkRegisterMembers(
+  members: (Record<string, unknown> & { password: string })[]
+): Promise<number> {
+  if (!USE_GAS) {
+    members.forEach(m => local.registerNewMember(m));
+    return members.length;
+  }
+  const res = await gas.bulkRegister(members, token());
+  if (!res.success) throw new Error(res.error || '一括登録に失敗しました');
+  return res.data?.created ?? 0;
+}
+
 export async function getMemberById(id: string): Promise<Member | undefined> {
   if (!USE_GAS) return local.getMemberById(id);
   const res = await gas.getMember(id, token());

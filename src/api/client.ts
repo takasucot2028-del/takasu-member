@@ -38,6 +38,10 @@ export const adminLogin = (email: string, password: string) =>
 export const registerMember = (data: MemberFormData) =>
   request<Member>('registerMember', { data });
 
+// 既存会員の一括登録（移行用・管理者専用）
+export const bulkRegister = (members: Record<string, unknown>[], token: string) =>
+  request<{ created: number; members: { id: string; memberNumber: string }[] }>('bulkRegister', { members, token });
+
 export const getMember = (memberId: string, token: string) =>
   request<Member>('getMember', { memberId, token });
 

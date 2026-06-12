@@ -230,6 +230,9 @@ function doPost(e) {
       case 'registerMember':
         result = handleRegister(body.data);
         break;
+      case 'bulkRegister':
+        result = handleBulkRegister(body.members);
+        break;
       case 'getMember':
         result = handleGetMember(body.memberId);
         break;
@@ -390,6 +393,48 @@ function handleRegister(data) {
   sheet.appendRow(row);
 
   return { success: true, data: { id, memberNumber, ...data, registeredAt: now } };
+}
+
+// 会員を一括登録（既存データ移行用・管理者専用）。
+// 採番のための最大値を一度だけ読み、全件を1回の setValues でまとめて追記する（高速）。
+function handleBulkRegister(members) {
+  if (!members || !members.length) return { success: true, data: { created: 0, members: [] } };
+  const sheet = getSheet('members');
+
+  // 既存の最大会員番号を取得（連番採番）
+  const data = sheet.getDataRange().getValues();
+  const numCol = colNum('members', 'memberNumber') - 1;
+  let max = 0;
+  for (let i = 1; i < data.length; i++) {
+    const num = parseInt(String(data[i][numCol]).replace('TSC-', ''), 10);
+    if (!isNaN(num) && num > max) max = num;
+  }
+
+  const now = new Date().toISOString().slice(0, 10);
+  const rows = [];
+  const created = [];
+  members.forEach(function (d) {
+    max += 1;
+    const id = genId();
+    const memberNumber = 'TSC-' + String(max).padStart(4, '0');
+    const hash = hashPassword(d.password || '');
+    const courseIds = (d.courseIds || []).join(',');
+    rows.push([
+      id, memberNumber, d.memberType,
+      d.lastName, d.firstName, d.lastNameKana, d.firstNameKana,
+      d.birthDate, d.postalCode || '', d.address, d.areaType,
+      d.phone, d.email, hash, courseIds, false, now,
+      d.school || '', d.guardianLastName || '', d.guardianFirstName || '',
+      d.guardianLastNameKana || '', d.guardianFirstNameKana || '',
+      d.guardianPhone || '', d.guardianEmail || '',
+      d.groupName || '', d.representativeName || '', d.memberCount || 0,
+    ]);
+    created.push({ id: id, memberNumber: memberNumber });
+  });
+
+  // 1回の書き込みでまとめて追記
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  return { success: true, data: { created: rows.length, members: created } };
 }
 
 function handleGetMember(memberId) {
