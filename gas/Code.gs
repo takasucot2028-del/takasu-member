@@ -12,39 +12,74 @@ function getSpreadsheetId() {
   return id;
 }
 
-function getSheet(name) {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId());
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    initSheet(sheet, name);
-  }
-  return sheet;
+// --- シート定義 ---
+// 各シートは「論理キー」（英語・コード内部で使用）で参照し、
+// 実際のシートタブ名・列見出しは日本語で表示する（事務局が見て分かるように）。
+// データは列の「位置」で読むため、内部のフィールドキーは英語のまま保たれる。
+// columns: [内部キー, 日本語見出し] の配列（この順序＝列順）。
+var SHEETS = {
+  members: { name: '会員', columns: [
+    ['id', 'ID'], ['memberNumber', '会員番号'], ['memberType', '会員種別'],
+    ['lastName', '姓'], ['firstName', '名'], ['lastNameKana', 'セイ'], ['firstNameKana', 'メイ'],
+    ['birthDate', '生年月日'], ['postalCode', '郵便番号'], ['address', '住所'], ['areaType', '町内外区分'],
+    ['phone', '電話番号'], ['email', 'メールアドレス'], ['passwordHash', 'パスワードハッシュ'],
+    ['courseIds', '所属教室ID'], ['isWithdrawn', '退会'], ['registeredAt', '登録日'],
+    ['school', '通学先'], ['guardianLastName', '保護者姓'], ['guardianFirstName', '保護者名'],
+    ['guardianLastNameKana', '保護者セイ'], ['guardianFirstNameKana', '保護者メイ'],
+    ['guardianPhone', '保護者電話'], ['guardianEmail', '保護者メール'],
+    ['groupName', '団体名'], ['representativeName', '代表者氏名'], ['memberCount', '加入人数'],
+  ] },
+  member_courses: { name: '会員教室', columns: [
+    ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
+  ] },
+  courses: { name: '教室マスタ', columns: [
+    ['id', 'ID'], ['name', '教室名'], ['paymentMethod', '支払方式'],
+    ['feeInTown', '町内料金'], ['feeOutOfTown', '町外料金'], ['note', '備考'],
+  ] },
+  billing: { name: '月次請求', columns: [
+    ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['memberName', '氏名'],
+    ['yearMonth', '対象年月'], ['dueDate', '引落日'], ['annualFee', '年会費'], ['insuranceFee', '保険料'],
+    ['courseFee', '参加費'], ['adjustmentFee', '調整額'], ['adjustmentNote', '調整備考'],
+    ['total', '合計'], ['status', '状態'], ['isRetry', '再請求'],
+  ] },
+  billing_group: { name: '団体請求', columns: [
+    ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['groupName', '団体名'],
+    ['itemName', '請求項目'], ['amount', '金額'], ['dueDate', '引落日'], ['status', '状態'],
+  ] },
+  billing_adjustment: { name: '調整請求', columns: [
+    ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['memberName', '氏名'],
+    ['amount', '金額'], ['note', '備考'], ['dueDate', '引落日'], ['status', '状態'],
+  ] },
+  auth_users: { name: '管理者', columns: [
+    ['email', 'メールアドレス'], ['passwordHash', 'パスワードハッシュ'], ['role', '権限'],
+  ] },
+};
+
+function sheetConf(key) {
+  const conf = SHEETS[key];
+  if (!conf) throw new Error('不明なシート: ' + key);
+  return conf;
+}
+function colKeys(key) { return sheetConf(key).columns.map(function (c) { return c[0]; }); }
+function colLabels(key) { return sheetConf(key).columns.map(function (c) { return c[1]; }); }
+// 内部キーに対応する列番号（1始まり）。無ければ -1。
+function colNum(key, fieldKey) {
+  const idx = colKeys(key).indexOf(fieldKey);
+  return idx < 0 ? -1 : idx + 1;
 }
 
-// --- シート初期化 ---
-function initSheet(sheet, name) {
-  const headers = {
-    members: ['id','memberNumber','memberType','lastName','firstName','lastNameKana','firstNameKana',
-              'birthDate','postalCode','address','areaType','phone','email','passwordHash',
-              'courseIds','isWithdrawn','registeredAt',
-              'school','guardianLastName','guardianFirstName','guardianLastNameKana','guardianFirstNameKana',
-              'guardianPhone','guardianEmail',
-              'groupName','representativeName','memberCount'],
-    member_courses: ['memberId','courseId','enrolledAt'],
-    courses: ['id','name','paymentMethod','feeInTown','feeOutOfTown','note'],
-    billing: ['id','memberId','memberNumber','memberName','yearMonth','dueDate',
-              'annualFee','insuranceFee','courseFee','adjustmentFee','adjustmentNote',
-              'total','status','isRetry'],
-    billing_group: ['id','memberId','memberNumber','groupName','itemName','amount','dueDate','status'],
-    billing_adjustment: ['id','memberId','memberNumber','memberName','amount','note','dueDate','status'],
-    auth_users: ['email','passwordHash','role'],
-  };
-
-  if (headers[name]) {
-    sheet.getRange(1, 1, 1, headers[name].length).setValues([headers[name]]);
+// 論理キーでシートを開く（なければ日本語見出しで新規作成）
+function getSheet(key) {
+  const conf = sheetConf(key);
+  const ss = SpreadsheetApp.openById(getSpreadsheetId());
+  let sheet = ss.getSheetByName(conf.name);
+  if (!sheet) {
+    sheet = ss.insertSheet(conf.name);
+    const labels = colLabels(key);
+    sheet.getRange(1, 1, 1, labels.length).setValues([labels]);
     sheet.setFrozenRows(1);
   }
+  return sheet;
 }
 
 // --- 初期セットアップ（1回だけ実行）---
@@ -94,6 +129,18 @@ function setupSpreadsheet() {
   }
   
   Logger.log('セットアップ完了');
+}
+
+// 旧バージョンの英語名シート（members, courses など）を削除する。
+// 日本語化の移行時に、setupSpreadsheet() で新シートを作成した後に1回だけ実行する。
+function removeLegacySheets() {
+  const legacy = ['members', 'member_courses', 'courses', 'billing', 'billing_group', 'billing_adjustment', 'auth_users'];
+  const ss = SpreadsheetApp.openById(getSpreadsheetId());
+  legacy.forEach(function (n) {
+    const sh = ss.getSheetByName(n);
+    if (sh) ss.deleteSheet(sh);
+  });
+  Logger.log('旧シートを削除しました');
 }
 
 // 管理者の認証情報を Script Properties (ADMIN_EMAIL / ADMIN_PASSWORD) から再設定する。
@@ -254,18 +301,20 @@ function genId() {
   return Utilities.getUuid().replace(/-/g, '').substring(0, 12);
 }
 
-function sheetToObjects(sheet) {
+// シートの各行を内部キーのオブジェクトへ変換。
+// 見出しが日本語でもデータは「列の位置」で内部キー（英語）に対応づける。
+function sheetToObjects(sheet, key) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
-  const headers = data[0];
+  const keys = colKeys(key);
   const tz = Session.getScriptTimeZone();
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => {
+    keys.forEach((k, i) => {
       const v = row[i];
       // スプレッドシートが日付文字列を Date 型へ自動変換するため、
       // 読み取り時に YYYY-MM-DD の文字列へ戻す（生年月日・引落日などの崩れ防止）。
-      obj[h] = (Object.prototype.toString.call(v) === '[object Date]')
+      obj[k] = (Object.prototype.toString.call(v) === '[object Date]')
         ? Utilities.formatDate(v, tz, 'yyyy-MM-dd')
         : v;
     });
@@ -294,7 +343,7 @@ function nextMemberNumber(sheet) {
 // --- ハンドラー ---
 function handleLogin(email, password) {
   const sheet = getSheet('members');
-  const members = sheetToObjects(sheet);
+  const members = sheetToObjects(sheet, 'members');
   const hash = hashPassword(password);
   // 同一メール＋パスワードに一致する全員（世帯）を返す
   const matched = members.filter(function (m) {
@@ -313,7 +362,7 @@ function handleLogin(email, password) {
 
 function handleAdminLogin(email, password) {
   const sheet = getSheet('auth_users');
-  const users = sheetToObjects(sheet);
+  const users = sheetToObjects(sheet, 'auth_users');
   const hash = hashPassword(password);
   const user = users.find(u => u.email === email && u.passwordHash === hash);
   if (!user) return { success: false, error: 'ログイン情報が正しくありません' };
@@ -345,7 +394,7 @@ function handleRegister(data) {
 
 function handleGetMember(memberId) {
   const sheet = getSheet('members');
-  const members = sheetToObjects(sheet);
+  const members = sheetToObjects(sheet, 'members');
   const member = members.find(m => m.id === memberId);
   if (!member) return { success: false, error: '会員が見つかりません' };
   member.courseIds = member.courseIds ? member.courseIds.split(',') : [];
@@ -355,16 +404,15 @@ function handleGetMember(memberId) {
 
 function handleUpdateMember(memberId, data) {
   const sheet = getSheet('members');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rowIndex = findRowIndex(sheet, 0, memberId);
   if (rowIndex < 0) return { success: false, error: '会員が見つかりません' };
 
   Object.keys(data).forEach(key => {
-    const colIndex = headers.indexOf(key);
-    if (colIndex >= 0) {
+    const cn = colNum('members', key);
+    if (cn > 0) {
       let value = data[key];
       if (key === 'courseIds' && Array.isArray(value)) value = value.join(',');
-      sheet.getRange(rowIndex, colIndex + 1).setValue(value);
+      sheet.getRange(rowIndex, cn).setValue(value);
     }
   });
 
@@ -373,17 +421,15 @@ function handleUpdateMember(memberId, data) {
 
 function handleWithdraw(memberId) {
   const sheet = getSheet('members');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rowIndex = findRowIndex(sheet, 0, memberId);
   if (rowIndex < 0) return { success: false, error: '会員が見つかりません' };
-  const colIndex = headers.indexOf('isWithdrawn');
-  sheet.getRange(rowIndex, colIndex + 1).setValue(true);
+  sheet.getRange(rowIndex, colNum('members', 'isWithdrawn')).setValue(true);
   return { success: true };
 }
 
 function handleGetMembers() {
   const sheet = getSheet('members');
-  const members = sheetToObjects(sheet);
+  const members = sheetToObjects(sheet, 'members');
   members.forEach(m => {
     m.courseIds = m.courseIds ? m.courseIds.split(',') : [];
     delete m.passwordHash;
@@ -393,7 +439,7 @@ function handleGetMembers() {
 
 function handleSearchMembers(query) {
   const sheet = getSheet('members');
-  const members = sheetToObjects(sheet);
+  const members = sheetToObjects(sheet, 'members');
   const q = query.toLowerCase();
   const results = members.filter(m =>
     String(m.memberNumber).toLowerCase().includes(q) ||
@@ -410,7 +456,7 @@ function handleSearchMembers(query) {
 
 function handleGetMembersByCourse(courseId) {
   const sheet = getSheet('members');
-  const members = sheetToObjects(sheet);
+  const members = sheetToObjects(sheet, 'members');
   const results = members.filter(m => {
     const ids = m.courseIds ? m.courseIds.split(',') : [];
     return ids.includes(courseId) && !m.isWithdrawn;
@@ -424,17 +470,15 @@ function handleGetMembersByCourse(courseId) {
 
 function handleGetBilling(yearMonth) {
   const sheet = getSheet('billing');
-  const records = sheetToObjects(sheet).filter(r => r.yearMonth === yearMonth);
+  const records = sheetToObjects(sheet, 'billing').filter(r => r.yearMonth === yearMonth);
   return { success: true, data: records };
 }
 
 function handleUpdateBillingStatus(billingId, status) {
   const sheet = getSheet('billing');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rowIndex = findRowIndex(sheet, 0, billingId);
   if (rowIndex < 0) return { success: false, error: '請求が見つかりません' };
-  const colIndex = headers.indexOf('status');
-  sheet.getRange(rowIndex, colIndex + 1).setValue(status);
+  sheet.getRange(rowIndex, colNum('billing', 'status')).setValue(status);
   return { success: true };
 }
 
@@ -444,9 +488,8 @@ function handleGenerateBilling(yearMonth) {
   return { success: true, data: [] };
 }
 
-// billing シートのヘッダー順に BillingRecord を行配列へ変換
-const BILLING_COLUMNS = ['id','memberId','memberNumber','memberName','yearMonth','dueDate',
-  'annualFee','insuranceFee','courseFee','adjustmentFee','adjustmentNote','total','status','isRetry'];
+// billing シートの列順（内部キー）。BillingRecord を行配列へ変換するのに使う。
+const BILLING_COLUMNS = colKeys('billing');
 
 function billingRecordToRow(r) {
   return BILLING_COLUMNS.map(c => (r[c] !== undefined && r[c] !== null) ? r[c] : '');
@@ -495,23 +538,21 @@ function handleReplaceMonthlyBilling(yearMonth, records) {
 // 引落不能（status=failed）の請求を全月から取得
 function handleGetFailedBillings() {
   const sheet = getSheet('billing');
-  const records = sheetToObjects(sheet).filter(r => r.status === 'failed');
+  const records = sheetToObjects(sheet, 'billing').filter(r => r.status === 'failed');
   return { success: true, data: records };
 }
 
 function handleUpdateGroupBillingStatus(id, status) {
   const sheet = getSheet('billing_group');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rowIndex = findRowIndex(sheet, 0, id);
   if (rowIndex < 0) return { success: false, error: '団体請求が見つかりません' };
-  const colIndex = headers.indexOf('status');
-  sheet.getRange(rowIndex, colIndex + 1).setValue(status);
+  sheet.getRange(rowIndex, colNum('billing_group', 'status')).setValue(status);
   return { success: true };
 }
 
 function handleGetGroupBillings() {
   const sheet = getSheet('billing_group');
-  return { success: true, data: sheetToObjects(sheet) };
+  return { success: true, data: sheetToObjects(sheet, 'billing_group') };
 }
 
 function handleAddGroupBilling(data) {
@@ -529,7 +570,7 @@ function handleAddAdjustment(memberId, amount, note, dueDate) {
   const id = genId();
   // 会員名を取得
   const memberSheet = getSheet('members');
-  const members = sheetToObjects(memberSheet);
+  const members = sheetToObjects(memberSheet, 'members');
   const member = members.find(m => m.id === memberId);
   const name = member ? (member.lastName + ' ' + member.firstName) : '';
   const memberNumber = member ? member.memberNumber : '';
