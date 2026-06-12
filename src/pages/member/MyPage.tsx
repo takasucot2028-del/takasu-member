@@ -164,7 +164,7 @@ export default function MyPage() {
                     <div key={c.id} className="flex justify-between items-center text-sm py-1">
                       <span>{c.name}</span>
                       <span className="text-gray-500 text-xs">
-                        {c.paymentMethod === 'ticket' ? 'チケット制' :
+                        {c.paymentMethod === 'ticket' || c.paymentMethod === 'none' ? '' :
                           member.areaType === 'in_town'
                             ? `${c.feeInTown.toLocaleString()}円`
                             : `${c.feeOutOfTown.toLocaleString()}円`

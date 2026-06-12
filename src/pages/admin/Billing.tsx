@@ -72,7 +72,7 @@ export default function Billing() {
             courseFee += fee;
           }
         }
-        // term1 と ticket はここでは自動生成しない（事務局が手動）
+        // term1 / ticket / none はここでは自動生成しない（none は徴収なし、他は事務局が手動）
       });
 
       // 年会費は4月のみ

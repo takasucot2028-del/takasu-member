@@ -7,7 +7,10 @@ export const COURSES: Course[] = [
   { id: 'c04', name: '幼児水泳教室', paymentMethod: 'term1', feeInTown: 2000, feeOutOfTown: 2000, note: '1期払い' },
   { id: 'c05', name: 'ダンス教室', paymentMethod: 'term3', feeInTown: 6000, feeOutOfTown: 6000, note: '3期払い' },
   { id: 'c06', name: '英会話教室', paymentMethod: 'monthly', feeInTown: 5000, feeOutOfTown: 5000, note: '毎月払い' },
-  { id: 'c07', name: '鷹栖REDWOLVES U-15', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
+  { id: 'c18', name: '鷹栖REDWOLVES 男子U15', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
+  { id: 'c19', name: '鷹栖REDWOLVES 女子U15', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
+  { id: 'c20', name: '鷹栖REDWOLVES 男女U12', paymentMethod: 'none', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
+  { id: 'c21', name: '鷹栖北野バドミントン少年団', paymentMethod: 'none', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
   { id: 'c08', name: '鷹栖バレーボールクラブ', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c09', name: '鷹栖ソフトテニスクラブ', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c10', name: '鷹栖剣道クラブ', paymentMethod: 'monthly', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
@@ -31,6 +34,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   term3: '3期払い',
   term1: '1期払い',
   ticket: 'チケット制',
+  none: '徴収なし',
 };
 
 export const BILLING_STATUS_LABELS: Record<string, string> = {

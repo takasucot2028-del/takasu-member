@@ -202,7 +202,7 @@ export default function Register() {
                       <div className="text-sm">
                         <div className="font-medium text-gray-800">{c.name}</div>
                         <div className="text-gray-500 text-xs">
-                          {c.paymentMethod === 'ticket' ? 'チケット制' :
+                          {c.paymentMethod === 'ticket' || c.paymentMethod === 'none' ? c.note :
                             c.feeInTown === c.feeOutOfTown
                               ? `${c.feeInTown.toLocaleString()}円（${c.note}）`
                               : `町内${c.feeInTown.toLocaleString()}円 / 町外${c.feeOutOfTown.toLocaleString()}円（${c.note}）`

@@ -1,8 +1,8 @@
 // 会員種別
 export type MemberType = 'general' | 'junior' | 'group';
 
-// 支払方式
-export type PaymentMethod = 'monthly' | 'term3' | 'term1' | 'ticket';
+// 支払方式（none = 徴収なし：自動請求の対象外、所属登録のみ）
+export type PaymentMethod = 'monthly' | 'term3' | 'term1' | 'ticket' | 'none';
 
 // 請求ステータス
 export type BillingStatus = 'pending' | 'billed' | 'completed' | 'failed';
