@@ -33,7 +33,7 @@ export default function MemberList() {
     // 氏名・生年月日も含めた複合キーで行う。これにより
     // ・兄弟（同メール・別氏名/生年月日）は別人として登録される
     // ・同一人物の二重アップロードはスキップされる
-    const keyOf = (m: { email?: unknown; lastName?: unknown; firstName?: unknown; groupName?: unknown; birthDate?: unknown }) =>
+    const keyOf = (m: Member | ImportMember) =>
       [m.email, m.lastName, m.firstName, m.groupName, m.birthDate]
         .map(v => String(v ?? '').trim().toLowerCase())
         .join('|');
