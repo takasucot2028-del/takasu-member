@@ -17,6 +17,7 @@ export default function MemberList() {
   const [importModal, setImportModal] = useState(false);
   const [parsed, setParsed] = useState<ImportMember[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [skipped, setSkipped] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
 
@@ -27,7 +28,29 @@ export default function MemberList() {
     setImportMsg('');
     const buffer = await file.arrayBuffer();
     const { members: ms, errors } = parseWorkbook(buffer);
-    setParsed(ms);
+
+    // メールアドレスで重複を除外（既存会員との重複・ファイル内の重複）。
+    // これにより同じファイルを2回アップロードしても二重登録されない。
+    const existing = await getAllMembers();
+    const existingEmails = new Set(existing.map(m => String(m.email || '').toLowerCase()));
+    const seen = new Set<string>();
+    const toRegister: ImportMember[] = [];
+    const skips: string[] = [];
+    ms.forEach(m => {
+      const email = String(m.email || '').toLowerCase();
+      const name = `${m.lastName || m.groupName || ''} ${m.firstName || ''}`.trim();
+      if (existingEmails.has(email)) {
+        skips.push(`${name}（${m.email}）: 既存会員と重複`);
+      } else if (seen.has(email)) {
+        skips.push(`${name}（${m.email}）: ファイル内で重複`);
+      } else {
+        seen.add(email);
+        toRegister.push(m);
+      }
+    });
+
+    setParsed(toRegister);
+    setSkipped(skips);
     setParseErrors(errors);
   };
 
@@ -47,6 +70,7 @@ export default function MemberList() {
     setImportModal(false);
     setParsed([]);
     setParseErrors([]);
+    setSkipped([]);
     if (fileRef.current) fileRef.current.value = '';
     setImportMsg(`${ok}件を登録しました${failed.length ? `（失敗 ${failed.length}件）` : ''}`);
     await loadMembers();
@@ -96,7 +120,7 @@ export default function MemberList() {
             退会者を表示
           </label>
           <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>
-          <Button size="sm" variant="secondary" onClick={() => { setImportModal(true); setImportMsg(''); }}>一括インポート</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setImportModal(true); setImportMsg(''); setParsed([]); setParseErrors([]); setSkipped([]); }}>一括インポート</Button>
         </div>
 
         {importMsg && <Alert type="success">{importMsg}</Alert>}
@@ -172,6 +196,16 @@ export default function MemberList() {
               <ul className="list-disc list-inside max-h-32 overflow-auto">
                 {parseErrors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
                 {parseErrors.length > 20 && <li>…ほか {parseErrors.length - 20} 件</li>}
+              </ul>
+            </Alert>
+          )}
+
+          {skipped.length > 0 && (
+            <Alert type="info">
+              <div className="font-medium mb-1">{skipped.length}件をスキップ（メール重複・二重登録防止）</div>
+              <ul className="list-disc list-inside max-h-32 overflow-auto">
+                {skipped.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
+                {skipped.length > 20 && <li>…ほか {skipped.length - 20} 件</li>}
               </ul>
             </Alert>
           )}
