@@ -136,6 +136,19 @@ function setupSpreadsheet() {
   Logger.log('セットアップ完了');
 }
 
+// 既存シートのヘッダー行を、現在の列定義（日本語見出し）に同期する。
+// スキーマに列を追加したときに実行すると、データを保持したまま見出しだけ更新できる。
+// （getSheet はシートが既存だと見出しを書き換えないため、列追加後はこれを実行する）
+function syncHeaders() {
+  Object.keys(SHEETS).forEach(function (key) {
+    const sheet = getSheet(key);
+    const labels = colLabels(key);
+    sheet.getRange(1, 1, 1, labels.length).setValues([labels]);
+    sheet.setFrozenRows(1);
+  });
+  Logger.log('ヘッダーを同期しました');
+}
+
 // 旧バージョンの英語名シート（members, courses など）を削除する。
 // 日本語化の移行時に、setupSpreadsheet() で新シートを作成した後に1回だけ実行する。
 function removeLegacySheets() {
