@@ -89,6 +89,13 @@ export const replaceMonthlyBilling = (yearMonth: string, records: BillingRecord[
 export const getFailedBillings = (token: string) =>
   request<BillingRecord[]>('getFailedBillings', { token });
 
+// 請求スケジュール（教室ごとの請求月）
+export const getBillingSchedule = (token: string) =>
+  request<Record<string, number[]>>('getBillingSchedule', { token });
+
+export const saveBillingSchedule = (schedule: Record<string, number[]>, token: string) =>
+  request<void>('saveBillingSchedule', { schedule, token });
+
 // === 事務局：団体請求 ===
 export const getGroupBillings = (token: string) =>
   request<GroupBilling[]>('getGroupBillings', { token });

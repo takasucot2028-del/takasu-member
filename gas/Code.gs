@@ -38,11 +38,13 @@ var SHEETS = {
     ['id', 'ID'], ['name', '教室名'], ['paymentMethod', '支払方式'],
     ['feeInTown', '町内料金'], ['feeOutOfTown', '町外料金'], ['note', '備考'],
   ] },
-  billing: { name: '月次請求', columns: [
+  billing: { name: '継続会費', columns: [
     ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['memberName', '氏名'],
-    ['yearMonth', '対象年月'], ['dueDate', '引落日'], ['annualFee', '年会費'], ['insuranceFee', '保険料'],
-    ['courseFee', '参加費'], ['adjustmentFee', '調整額'], ['adjustmentNote', '調整備考'],
-    ['total', '合計'], ['status', '状態'], ['isRetry', '再請求'],
+    ['yearMonth', '対象年月'], ['dueDate', '引落日'],
+    ['annualFee', '年会費'], ['monthlyClassroom', '月会費(教室)'], ['monthlyConsigned', '月会費(委託)'],
+    ['monthlyCommunity', '月会費(地域クラブ)'], ['insuranceFee', '保険料'],
+    ['specialFee', '特別徴収'], ['specialNote', '特別徴収備考'],
+    ['total', '合計'], ['status', '状態'], ['isRetry', '再請求'], ['carriedTo', '繰越先'],
   ] },
   billing_group: { name: '団体請求', columns: [
     ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['groupName', '団体名'],
@@ -289,6 +291,12 @@ function doPost(e) {
         break;
       case 'getFailedBillings':
         result = handleGetFailedBillings();
+        break;
+      case 'getBillingSchedule':
+        result = handleGetBillingSchedule();
+        break;
+      case 'saveBillingSchedule':
+        result = handleSaveBillingSchedule(body.schedule);
         break;
       case 'getGroupBillings':
         result = handleGetGroupBillings();
@@ -632,6 +640,19 @@ function handleGetFailedBillings() {
   const sheet = getSheet('billing');
   const records = sheetToObjects(sheet, 'billing').filter(r => r.status === 'failed');
   return { success: true, data: records };
+}
+
+// 請求スケジュール（教室ごとの請求月）。Script Properties に JSON で保持。
+function handleGetBillingSchedule() {
+  const raw = PropertiesService.getScriptProperties().getProperty('BILLING_SCHEDULE');
+  let sched = {};
+  if (raw) { try { sched = JSON.parse(raw); } catch (e) { sched = {}; } }
+  return { success: true, data: sched };
+}
+
+function handleSaveBillingSchedule(schedule) {
+  PropertiesService.getScriptProperties().setProperty('BILLING_SCHEDULE', JSON.stringify(schedule || {}));
+  return { success: true };
 }
 
 function handleUpdateGroupBillingStatus(id, status) {

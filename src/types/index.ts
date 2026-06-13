@@ -11,8 +11,8 @@ export type CourseCategory = 'classroom' | 'consigned' | 'community';
 // 翌年度の継続意思（年度更新）
 export type NextYearStatus = '' | 'continue' | 'withdraw';
 
-// 請求ステータス
-export type BillingStatus = 'pending' | 'billed' | 'completed' | 'failed';
+// 請求ステータス（carried = 引落不能を翌月へ繰越済）
+export type BillingStatus = 'pending' | 'billed' | 'completed' | 'failed' | 'carried';
 
 // 町内外区分
 export type AreaType = 'in_town' | 'out_of_town';
@@ -70,7 +70,7 @@ export interface MemberFormData extends Omit<Member, 'id' | 'memberNumber' | 'is
   password: string;
 }
 
-// 請求レコード
+// 請求レコード（継続会費）。費目は会員ごとの内訳列。
 export interface BillingRecord {
   id: string;
   memberId: string;
@@ -78,14 +78,17 @@ export interface BillingRecord {
   memberName: string;
   yearMonth: string;
   dueDate: string;
-  annualFee: number;
-  insuranceFee: number;
-  courseFee: number;
-  adjustmentFee: number;
-  adjustmentNote: string;
+  annualFee: number;         // 年会費
+  monthlyClassroom: number;  // 月会費（教室）
+  monthlyConsigned: number;  // 月会費（委託）
+  monthlyCommunity: number;  // 月会費（地域クラブ）
+  insuranceFee: number;      // 保険料
+  specialFee: number;        // 特別徴収
+  specialNote: string;       // 特別徴収の備考
   total: number;
   status: BillingStatus;
-  isRetry: boolean;
+  isRetry: boolean;          // 引落不能の繰越（再請求）を含む
+  carriedTo: string;         // 繰越先の対象年月（status=carried のとき）
 }
 
 // 団体請求
@@ -109,6 +112,10 @@ export interface AuthResponse {
   role?: 'member' | 'admin';
   error?: string;
 }
+
+// 請求スケジュール（3期・1期払い教室の請求月）。courseId -> 請求月(1-12)の配列。
+// 年度ごとに事務局が設定する。3期払いは3つ、1期払いは1つを想定。
+export type BillingSchedule = Record<string, number[]>;
 
 // API レスポンス共通
 export interface ApiResponse<T = unknown> {

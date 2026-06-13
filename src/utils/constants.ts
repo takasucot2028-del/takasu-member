@@ -52,7 +52,19 @@ export const BILLING_STATUS_LABELS: Record<string, string> = {
   billed: '請求済',
   completed: '引落完了',
   failed: '引落不能',
+  carried: '繰越済',
 };
+
+// 請求スケジュールの初期値: 3期払いは第1〜3期=5/8/1月、1期払いは未設定（事務局が設定）。
+// 毎月払い・チケット・徴収なしはスケジュール対象外。
+export function defaultBillingSchedule(): Record<string, number[]> {
+  const sched: Record<string, number[]> = {};
+  COURSES.forEach(c => {
+    if (c.paymentMethod === 'term3') sched[c.id] = [5, 8, 1];
+    else if (c.paymentMethod === 'term1') sched[c.id] = [];
+  });
+  return sched;
+}
 
 // 年会費
 export const ANNUAL_FEES = {

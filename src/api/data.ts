@@ -5,7 +5,8 @@
 // 全関数は Promise を返す（非同期統一）。
 // ページはこの層だけを参照し、バックエンドの差異を意識しない。
 // ============================================
-import type { Member, BillingRecord, GroupBilling, AuthResponse } from '../types';
+import type { Member, BillingRecord, GroupBilling, AuthResponse, BillingSchedule } from '../types';
+import { defaultBillingSchedule } from '../utils/constants';
 import * as local from '../utils/store';
 import * as gas from './client';
 
@@ -132,6 +133,19 @@ export async function updateBillingStatus(billingId: string, status: string): Pr
 export async function getFailedBillings(): Promise<BillingRecord[]> {
   if (!USE_GAS) return local.getFailedBillings();
   return unwrap(await gas.getFailedBillings(token()), []);
+}
+
+// === 請求スケジュール（教室ごとの請求月） ===
+export async function getBillingSchedule(): Promise<BillingSchedule> {
+  if (!USE_GAS) return local.getBillingScheduleLocal();
+  // GAS は保存済みのみ返すため、既定値とマージして欠けを補う
+  const saved = unwrap(await gas.getBillingSchedule(token()), {} as BillingSchedule);
+  return { ...defaultBillingSchedule(), ...saved };
+}
+
+export async function saveBillingSchedule(schedule: BillingSchedule): Promise<void> {
+  if (!USE_GAS) { local.saveBillingScheduleLocal(schedule); return; }
+  await gas.saveBillingSchedule(schedule, token());
 }
 
 // === 団体請求 ===

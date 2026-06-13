@@ -1,10 +1,11 @@
-import type { Member, BillingRecord, GroupBilling, AuthResponse, MemberType, AreaType } from '../types';
-import { ANNUAL_FEES, INSURANCE_FEES } from './constants';
+import type { Member, BillingRecord, GroupBilling, AuthResponse, MemberType, AreaType, BillingSchedule } from '../types';
+import { ANNUAL_FEES, INSURANCE_FEES, defaultBillingSchedule } from './constants';
 
 const STORAGE_KEY = 'tsc_members';
 const BILLING_KEY = 'tsc_billing';
 const GROUP_BILLING_KEY = 'tsc_group_billing';
 const ADMIN_KEY = 'tsc_admin';
+const SCHEDULE_KEY = 'tsc_billing_schedule';
 
 // --- ユーティリティ ---
 function genId(): string {
@@ -203,6 +204,19 @@ export function updateBillingStatusLocal(billingId: string, status: string) {
 
 export function getFailedBillings(): BillingRecord[] {
   return loadBilling().filter(r => r.status === 'failed');
+}
+
+// --- 請求スケジュール（3期・1期払いの請求月） ---
+export function getBillingScheduleLocal(): BillingSchedule {
+  const defaults = defaultBillingSchedule();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '{}');
+    return { ...defaults, ...saved };
+  } catch { return defaults; }
+}
+
+export function saveBillingScheduleLocal(schedule: BillingSchedule) {
+  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
 }
 
 // --- 団体請求 ---
