@@ -4,6 +4,13 @@ export type MemberType = 'general' | 'junior' | 'group';
 // 支払方式（none = 徴収なし：自動請求の対象外、所属登録のみ）
 export type PaymentMethod = 'monthly' | 'term3' | 'term1' | 'ticket' | 'none';
 
+// 教室カテゴリ（継続会費の費目区分）
+// classroom = 教室 / consigned = 教室（委託） / community = 教室（地域クラブ）
+export type CourseCategory = 'classroom' | 'consigned' | 'community';
+
+// 翌年度の継続意思（年度更新）
+export type NextYearStatus = '' | 'continue' | 'withdraw';
+
 // 請求ステータス
 export type BillingStatus = 'pending' | 'billed' | 'completed' | 'failed';
 
@@ -15,6 +22,7 @@ export interface Course {
   id: string;
   name: string;
   paymentMethod: PaymentMethod;
+  category: CourseCategory;
   feeInTown: number;
   feeOutOfTown: number;
   note: string;
@@ -50,6 +58,11 @@ export interface Member {
   groupName?: string;
   representativeName?: string;
   memberCount?: number;
+  // 口座振替・保険・年度更新（事務局管理）
+  cssNumber?: string;             // CSS番号（口座振替番号・家庭=兄弟で共通）
+  insuranceEnrolled?: boolean;    // スポーツ安全保険 加入フラグ
+  insuranceEnrolledAt?: string;   // 保険加入日（YYYY-MM-DD）
+  nextYearStatus?: NextYearStatus; // 翌年度の継続意思
 }
 
 // 会員登録フォーム

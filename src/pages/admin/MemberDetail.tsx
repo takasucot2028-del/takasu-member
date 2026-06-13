@@ -117,6 +117,31 @@ export default function MemberDetail() {
                 </>
               )}
 
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-medium text-sm text-gray-700 mb-2">口座振替・保険（事務局管理）</h3>
+                <Field label="CSS番号（口座振替番号・家庭共通）">
+                  <Input value={form.cssNumber || ''} onChange={e => set('cssNumber', e.target.value)} />
+                </Field>
+                {member.memberType !== 'general' && (
+                  <>
+                    <label className="flex items-center gap-2 text-sm py-1">
+                      <input type="checkbox" checked={!!form.insuranceEnrolled} onChange={e => set('insuranceEnrolled', e.target.checked)} />
+                      スポーツ安全保険に加入
+                    </label>
+                    <Field label="保険加入日">
+                      <Input type="date" value={form.insuranceEnrolledAt || ''} onChange={e => set('insuranceEnrolledAt', e.target.value)} />
+                    </Field>
+                  </>
+                )}
+                <Field label="翌年度の意思">
+                  <Select value={form.nextYearStatus || ''} onChange={e => set('nextYearStatus', e.target.value)}>
+                    <option value="">未回答</option>
+                    <option value="continue">継続</option>
+                    <option value="withdraw">退会</option>
+                  </Select>
+                </Field>
+              </div>
+
               {member.memberType !== 'group' && (
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium text-sm text-gray-700 mb-2">参加教室</h3>
@@ -161,6 +186,19 @@ export default function MemberDetail() {
                     <Row label="人数">{member.memberCount}名</Row>
                   </>
                 )}
+                <Row label="CSS番号">{member.cssNumber || '—'}</Row>
+                {member.memberType !== 'general' && (
+                  <Row label="保険加入">
+                    {member.insuranceEnrolled
+                      ? `加入${member.insuranceEnrolledAt ? `（${member.insuranceEnrolledAt}）` : ''}`
+                      : '未加入'}
+                  </Row>
+                )}
+                <Row label="翌年度">
+                  {member.nextYearStatus === 'continue' ? '継続'
+                    : member.nextYearStatus === 'withdraw' ? '退会'
+                    : '未回答'}
+                </Row>
               </div>
 
               <div className="border-t mt-4 pt-4">

@@ -28,6 +28,8 @@ var SHEETS = {
     ['guardianLastNameKana', '保護者セイ'], ['guardianFirstNameKana', '保護者メイ'],
     ['guardianPhone', '保護者電話'], ['guardianEmail', '保護者メール'],
     ['groupName', '団体名'], ['representativeName', '代表者氏名'], ['memberCount', '加入人数'],
+    ['cssNumber', 'CSS番号'], ['insuranceEnrolled', '保険加入'], ['insuranceEnrolledAt', '保険加入日'],
+    ['nextYearStatus', '翌年度意思'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -120,6 +122,9 @@ function setupSpreadsheet() {
       ['c11','NexusBC','monthly',7000,9000,'毎月払い'],
       ['c12','TakasuXC','monthly',2000,4000,'毎月払い'],
       ['c13','マルチスポーツクラブ','monthly',1000,2000,'毎月払い'],
+      ['c22','鷹栖剣道少年団','none',0,0,'徴収なし'],
+      ['c23','鷹栖北野クロスカントリースキー少年団','none',0,0,'徴収なし'],
+      ['c24','鷹栖北野野球少年団','none',0,0,'徴収なし'],
       ['c14','ヨガ教室','ticket',0,0,'チケット制'],
       ['c15','ストレッチ教室','ticket',0,0,'チケット制'],
       ['c16','たかスポレッチ','ticket',0,0,'チケット制'],
@@ -389,6 +394,8 @@ function handleRegister(data) {
     data.guardianLastNameKana || '', data.guardianFirstNameKana || '',
     data.guardianPhone || '', data.guardianEmail || '',
     data.groupName || '', data.representativeName || '', data.memberCount || 0,
+    data.cssNumber || '', data.insuranceEnrolled || false, data.insuranceEnrolledAt || '',
+    data.nextYearStatus || '',
   ];
   sheet.appendRow(row);
 
@@ -428,6 +435,8 @@ function handleBulkRegister(members) {
       d.guardianLastNameKana || '', d.guardianFirstNameKana || '',
       d.guardianPhone || '', d.guardianEmail || '',
       d.groupName || '', d.representativeName || '', d.memberCount || 0,
+      d.cssNumber || '', d.insuranceEnrolled || false, d.insuranceEnrolledAt || '',
+      d.nextYearStatus || '',
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });
