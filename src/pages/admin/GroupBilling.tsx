@@ -59,7 +59,7 @@ export default function GroupBillingPage() {
       '団体名': b.groupName,
       '請求項目': b.itemName,
       '金額': b.amount,
-      '引落日': b.dueDate,
+      '支払日': b.dueDate,
       'ステータス': BILLING_STATUS_LABELS[b.status],
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -93,7 +93,7 @@ export default function GroupBillingPage() {
               <Th>団体名</Th>
               <Th>請求項目</Th>
               <Th className="text-right">金額</Th>
-              <Th>引落日</Th>
+              <Th>支払日</Th>
               <Th>状態</Th>
               <Th></Th>
             </tr>
@@ -143,7 +143,7 @@ export default function GroupBillingPage() {
         <Field label="金額" required>
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="10000" />
         </Field>
-        <Field label="引落日" required>
+        <Field label="支払日" required>
           <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
         </Field>
         <div className="flex gap-3 mt-4">

@@ -27,6 +27,7 @@ export default function Header() {
             <NavLink to="/admin/insurance" current={location.pathname}>保険管理</NavLink>
             <NavLink to="/admin/billing" current={location.pathname}>継続会費</NavLink>
             <NavLink to="/admin/billing/group" current={location.pathname}>団体請求</NavLink>
+            <NavLink to="/admin/transfer" current={location.pathname}>口座振替</NavLink>
             <NavLink to="/admin/billing/unpaid" current={location.pathname}>引落不能</NavLink>
           </nav>
         )}
@@ -51,6 +52,7 @@ export default function Header() {
           <NavLink to="/admin/insurance" current={location.pathname}>保険</NavLink>
           <NavLink to="/admin/billing" current={location.pathname}>会費</NavLink>
           <NavLink to="/admin/billing/group" current={location.pathname}>団体</NavLink>
+          <NavLink to="/admin/transfer" current={location.pathname}>振替</NavLink>
           <NavLink to="/admin/billing/unpaid" current={location.pathname}>不能</NavLink>
         </nav>
       )}

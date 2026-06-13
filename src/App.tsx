@@ -16,6 +16,7 @@ import Insurance from './pages/admin/Insurance';
 import Billing from './pages/admin/Billing';
 import GroupBillingPage from './pages/admin/GroupBilling';
 import UnpaidBilling from './pages/admin/UnpaidBilling';
+import Transfer from './pages/admin/Transfer';
 
 function MemberGuard({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, role } = useAuth();
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/admin/billing" element={<AdminGuard><Billing /></AdminGuard>} />
         <Route path="/admin/billing/group" element={<AdminGuard><GroupBillingPage /></AdminGuard>} />
         <Route path="/admin/billing/unpaid" element={<AdminGuard><UnpaidBilling /></AdminGuard>} />
+        <Route path="/admin/transfer" element={<AdminGuard><Transfer /></AdminGuard>} />
       </Routes>
     </div>
   );
