@@ -206,6 +206,12 @@ export function getFailedBillings(): BillingRecord[] {
   return loadBilling().filter(r => r.status === 'failed');
 }
 
+// 指定会員（世帯）の請求のみ取得
+export function getMemberBillingLocal(memberIds: string[]): BillingRecord[] {
+  const set = new Set(memberIds);
+  return loadBilling().filter(r => set.has(r.memberId));
+}
+
 // --- 請求スケジュール（3期・1期払いの請求月） ---
 export function getBillingScheduleLocal(): BillingSchedule {
   const defaults = defaultBillingSchedule();

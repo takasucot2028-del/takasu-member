@@ -135,6 +135,12 @@ export async function getFailedBillings(): Promise<BillingRecord[]> {
   return unwrap(await gas.getFailedBillings(token()), []);
 }
 
+// 会員（保護者）が自分の世帯の請求を取得。GAS はセッションの世帯に限定して返す。
+export async function getMemberBilling(memberIds: string[]): Promise<BillingRecord[]> {
+  if (!USE_GAS) return local.getMemberBillingLocal(memberIds);
+  return unwrap(await gas.getMemberBilling(token()), []);
+}
+
 // === 請求スケジュール（教室ごとの請求月） ===
 export async function getBillingSchedule(): Promise<BillingSchedule> {
   if (!USE_GAS) return local.getBillingScheduleLocal();

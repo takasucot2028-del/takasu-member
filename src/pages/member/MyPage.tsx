@@ -3,8 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
 import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance } from '../../api/data';
-import type { Member } from '../../types';
+import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance, getMemberBilling } from '../../api/data';
+import type { Member, BillingRecord } from '../../types';
+
+// 請求レコードの費目内訳（0でないもの）を「ラベル 金額円」の配列で返す
+const FEE_LABELS: [keyof BillingRecord, string][] = [
+  ['annualFee', '年会費'], ['monthlyClassroom', '月会費(教室)'], ['monthlyConsigned', '月会費(委託)'],
+  ['monthlyCommunity', '月会費(地域クラブ)'], ['insuranceFee', '保険料'], ['specialFee', '特別徴収'],
+];
+function breakdown(r: BillingRecord): string[] {
+  const parts = FEE_LABELS
+    .filter(([k]) => (r[k] as number) > 0)
+    .map(([k, label]) => `${label} ${(r[k] as number).toLocaleString()}円`);
+  if (r.specialFee > 0 && r.specialNote) parts[parts.length - 1] += `（${r.specialNote}）`;
+  return parts;
+}
+function statusText(s: string): string {
+  return s === 'completed' ? '振替済' : s === 'failed' ? '引落不能' : s === 'carried' ? '翌月へ繰越' : '振替予定';
+}
 
 export default function MyPage() {
   const { member, members, activeMemberId, setActiveMemberId, token, setMember, setHousehold, logout } = useAuth();
@@ -12,6 +28,13 @@ export default function MyPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [billing, setBilling] = useState<BillingRecord[]>([]);
+
+  // 世帯の請求（振替予定・履歴）を取得
+  useEffect(() => {
+    if (members.length === 0) return;
+    getMemberBilling(members.map(m => m.id)).then(setBilling);
+  }, [members]);
 
   // 初回マウント時、アクティブ会員の最新情報を取得
   useEffect(() => {
@@ -224,6 +247,55 @@ export default function MyPage() {
             )}
           </Card>
         )}
+
+        {/* 請求・振替予定 */}
+        <Card>
+          <h3 className="font-medium text-gray-700 text-sm mb-3">請求・振替予定</h3>
+          {(() => {
+            const byMonth: Record<string, BillingRecord[]> = {};
+            billing.forEach(r => { (byMonth[r.yearMonth] ||= []).push(r); });
+            const months = Object.keys(byMonth).sort().reverse();
+            if (months.length === 0) {
+              return <p className="text-gray-400 text-sm">請求はまだありません</p>;
+            }
+            return (
+              <div className="space-y-4">
+                {months.map(ym => {
+                  const recs = byMonth[ym];
+                  const total = recs.reduce((s, r) => s + r.total, 0);
+                  const due = recs[0]?.dueDate || '';
+                  const anyFailed = recs.some(r => r.status === 'failed');
+                  const [y, m] = ym.split('-');
+                  return (
+                    <div key={ym} className="border-b border-gray-100 pb-3 last:border-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium text-sm">{y}年{parseInt(m, 10)}月の口座振替</span>
+                        <span className="text-xs text-gray-500">振替日: {due}</span>
+                      </div>
+                      <div className="space-y-1">
+                        {recs.map(r => (
+                          <div key={r.id} className="text-sm flex justify-between gap-2">
+                            <span className="text-gray-700">
+                              {members.length > 1 && <span className="text-gray-500 mr-1">{r.memberName}:</span>}
+                              {breakdown(r).join(' / ') || '—'}
+                            </span>
+                            <Badge color={r.status === 'failed' ? 'red' : r.status === 'completed' ? 'green' : 'blue'}>
+                              {statusText(r.status)}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-right text-sm font-medium mt-1">合計 {total.toLocaleString()}円</div>
+                      {anyFailed && (
+                        <Alert type="error">この月は口座振替ができませんでした。翌月の請求に繰り越して再度引き落とします。</Alert>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </Card>
 
         {/* 退会 */}
         <Card className="border-red-100">

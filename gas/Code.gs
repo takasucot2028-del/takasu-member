@@ -217,11 +217,14 @@ function getSession(token) {
 // 認可: 公開アクション以外はトークン必須。管理者専用／本人or管理者を区別する。
 var PUBLIC_ACTIONS = { login: true, adminLogin: true, registerMember: true };
 var SELF_OR_ADMIN_ACTIONS = { getMember: true, updateMember: true, withdrawMember: true };
+// 認証済みなら誰でも可（ハンドラ側でセッションの世帯に限定）
+var AUTHED_ACTIONS = { getMemberBilling: true };
 
 function enforceAuth(action, body) {
   if (PUBLIC_ACTIONS[action]) return;
   const session = getSession(body.token);
   if (!session) throw new Error('認証が必要です。再度ログインしてください');
+  if (AUTHED_ACTIONS[action]) return; // 認証済みなら許可（自分の世帯のみ返す）
   if (SELF_OR_ADMIN_ACTIONS[action]) {
     if (session.role === 'admin') return;
     // 世帯（同一メールの複数会員）のいずれかなら本人として許可
@@ -291,6 +294,9 @@ function doPost(e) {
         break;
       case 'getFailedBillings':
         result = handleGetFailedBillings();
+        break;
+      case 'getMemberBilling':
+        result = handleGetMemberBilling(body.token);
         break;
       case 'getBillingSchedule':
         result = handleGetBillingSchedule();
@@ -633,6 +639,17 @@ function handleReplaceMonthlyBilling(yearMonth, records) {
   // 新しい自動生成レコードを追加
   (records || []).forEach(r => sheet.appendRow(billingRecordToRow(r)));
   return { success: true };
+}
+
+// 会員（保護者）が自分の世帯の請求を取得。セッションの memberIds に限定する。
+function handleGetMemberBilling(token) {
+  const session = getSession(token);
+  const ids = (session && session.memberIds) || [];
+  const sheet = getSheet('billing');
+  const records = sheetToObjects(sheet, 'billing').filter(function (r) {
+    return ids.indexOf(r.memberId) !== -1;
+  });
+  return { success: true, data: records };
 }
 
 // 引落不能（status=failed）の請求を全月から取得
