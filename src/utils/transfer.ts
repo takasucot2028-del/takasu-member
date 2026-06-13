@@ -5,6 +5,11 @@ import * as XLSX from 'xlsx';
 import type { Member, BillingRecord, GroupBilling } from '../types';
 import { BILLING_STATUS_LABELS } from './constants';
 
+// たかすスポーツクラブの団体コード（CSS収納代行が発行・全行共通の固定値）
+export const CSS_TEAM_CODE = 940005766;
+// X列（前回確定額など）の既定値。実データでは "000000000000"。
+const CSS_X_ZERO = '000000000000';
+
 // CSS「加入者一覧」様式の列（この順序で出力する）
 export const CSS_COLUMNS = [
   '団体コード', '加入者コード', '加入者名カナ', '加入者名', '請求状態',
@@ -83,36 +88,35 @@ export function buildCssRows(
     const allIndividual = ms.every(m => m.memberType !== 'group');
     const lastNames = new Set(ms.map(m => m.lastName));
     if (allIndividual && lastNames.size === 1) {
-      // 兄弟など同姓 → 「姓 名1・名2」
-      const name = `${ms[0].lastName} ${ms.map(m => m.firstName).join('・')}`;
-      const kana = `${ms[0].lastNameKana || ''} ${ms.map(m => m.firstNameKana || '').join('・')}`.trim();
+      // 兄弟など同姓 → 「姓　名1・名2」（姓名の区切りは全角スペース）
+      const name = `${ms[0].lastName}　${ms.map(m => m.firstName).join('・')}`;
+      const kana = `${ms[0].lastNameKana || ''}　${ms.map(m => m.firstNameKana || '').join('・')}`;
       return { name, kana };
     }
-    const name = ms.map(m => (m.memberType === 'group' ? (m.groupName || '') : `${m.lastName} ${m.firstName}`)).join('・');
-    const kana = ms.map(m => (m.memberType === 'group' ? '' : `${m.lastNameKana || ''} ${m.firstNameKana || ''}`.trim())).join('・');
+    const name = ms.map(m => (m.memberType === 'group' ? (m.groupName || '') : `${m.lastName}　${m.firstName}`)).join('・');
+    const kana = ms.map(m => (m.memberType === 'group' ? '' : `${m.lastNameKana || ''}　${m.firstNameKana || ''}`)).join('・');
     return { name, kana };
   };
 
-  const num = (n: number) => (n > 0 ? n : '');
   const rows: (string | number)[][] = [CSS_COLUMNS.slice()];
   Object.values(map).forEach(a => {
     const { name, kana } = nameOf(a);
     rows.push([
-      '',                 // 団体コード
+      CSS_TEAM_CODE,      // 団体コード（固定）
       a.code,             // 加入者コード（CSS番号）
       kana,               // 加入者名カナ
       name,               // 加入者名
-      '',                 // 請求状態
-      num(a.annual),      // 年会費
-      num(a.sanka),       // 参加費（教室＋特別徴収＋団体）
-      num(a.insurance),   // 保険料
-      num(a.community),   // 参加費（地域クラブ）
-      num(a.consigned),   // 参加費（委託）
-      '', '', '', '', '', // 銀行コード〜口座名義人（CSSが保持）
-      '',                 // 新規コード
+      0,                  // 請求状態
+      a.annual,           // 年会費（0でも数値）
+      a.sanka,            // 参加費（教室＋特別徴収＋団体）
+      a.insurance,        // 保険料
+      a.community,        // 参加費（地域クラブ）
+      a.consigned,        // 参加費（委託）
+      '', '', '', '', '', // 銀行コード〜口座名義人（CSSが保持・コードで照合）
+      0,                  // 新規コード
       a.postal, a.address, a.email, a.phone,
       a.biko.join(' / '), // 備考
-      '', '', '', '', '', // X列
+      CSS_X_ZERO, CSS_X_ZERO, CSS_X_ZERO, CSS_X_ZERO, CSS_X_ZERO, // X列
       '',                 // 最終振替年月
     ]);
   });
