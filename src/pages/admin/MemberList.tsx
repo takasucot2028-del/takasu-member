@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Modal, Alert } from '../../components/UI';
+import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Modal, Field, Alert } from '../../components/UI';
 import { MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { getAllMembers, bulkRegisterMembers } from '../../api/data';
+import { getAllMembers, bulkRegisterMembers, runYearUpdate } from '../../api/data';
 import { downloadTemplate, parseWorkbook, DEFAULT_IMPORT_PASSWORD, type ImportMember } from '../../utils/memberImport';
 import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
@@ -20,6 +20,11 @@ export default function MemberList() {
   const [skipped, setSkipped] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
+
+  // 年度更新
+  const [yearModal, setYearModal] = useState(false);
+  const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
+  const [yearRunning, setYearRunning] = useState(false);
 
   const loadMembers = () => getAllMembers().then(setMembers);
   useEffect(() => { loadMembers(); }, []);
@@ -79,6 +84,24 @@ export default function MemberList() {
     await loadMembers();
   };
 
+  const withdrawCount = members.filter(m => !m.isWithdrawn && m.nextYearStatus === 'withdraw').length;
+  const activeCount = members.filter(m => !m.isWithdrawn).length;
+
+  const runYear = async () => {
+    setYearRunning(true);
+    let resultMsg = '';
+    try {
+      const res = await runYearUpdate(fiscalYear);
+      resultMsg = `年度更新を実行しました（新年度 ${fiscalYear}）：退会 ${res.withdrawn}件 ／ 継続 ${res.continued}件`;
+    } catch (e) {
+      resultMsg = `年度更新に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    setYearRunning(false);
+    setYearModal(false);
+    setImportMsg(resultMsg);
+    await loadMembers();
+  };
+
   const q = query.toLowerCase();
   const filtered = members
     .filter(m =>
@@ -124,6 +147,7 @@ export default function MemberList() {
           </label>
           <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>
           <Button size="sm" variant="secondary" onClick={() => { setImportModal(true); setImportMsg(''); setParsed([]); setParseErrors([]); setSkipped([]); }}>一括インポート</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setYearModal(true); setImportMsg(''); }}>年度更新</Button>
         </div>
 
         {importMsg && <Alert type="success">{importMsg}</Alert>}
@@ -222,6 +246,29 @@ export default function MemberList() {
               {importing ? '登録中…' : `${parsed.length}件を登録`}
             </Button>
             <Button variant="secondary" onClick={() => setImportModal(false)} disabled={importing}>キャンセル</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={yearModal} onClose={() => setYearModal(false)} title="年度更新（一括繰越）">
+        <div className="space-y-3 text-sm">
+          <Field label="新年度（西暦）">
+            <Input type="number" value={fiscalYear} onChange={e => setFiscalYear(parseInt(e.target.value, 10) || fiscalYear)} className="w-32" />
+          </Field>
+          <Alert type="info">
+            実行すると次の処理を行います（在籍 {activeCount}名）:
+            <ul className="list-disc list-inside mt-1">
+              <li><strong>退会希望 {withdrawCount}名</strong> を退会処理します</li>
+              <li>継続・未回答の会員は在籍維持。保険加入者の加入日を <strong>{fiscalYear}-04-01</strong> に更新</li>
+              <li>全員の翌年度意思をリセット</li>
+            </ul>
+          </Alert>
+          <p className="text-xs text-red-500">※退会処理を含みます。実行前に退会希望者の人数を確認してください。</p>
+          <div className="flex gap-3 pt-1">
+            <Button variant="danger" onClick={runYear} disabled={yearRunning}>
+              {yearRunning ? '処理中…' : '年度更新を実行'}
+            </Button>
+            <Button variant="secondary" onClick={() => setYearModal(false)} disabled={yearRunning}>キャンセル</Button>
           </div>
         </div>
       </Modal>

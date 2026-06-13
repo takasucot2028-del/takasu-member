@@ -259,6 +259,9 @@ function doPost(e) {
       case 'bulkUpdateInsurance':
         result = handleBulkUpdateInsurance(body.updates);
         break;
+      case 'runYearUpdate':
+        result = handleRunYearUpdate(body.fiscalYear);
+        break;
       case 'getMember':
         result = handleGetMember(body.memberId);
         break;
@@ -474,6 +477,36 @@ function handleBulkRegister(members) {
   // 1回の書き込みでまとめて追記
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   return { success: true, data: { created: rows.length, members: created } };
+}
+
+// 年度更新（一括繰越・管理者専用）。
+// 退会希望(nextYearStatus=withdraw)を退会処理、継続/未回答は在籍維持し、
+// 保険加入者の加入日を新年度4/1に更新。処理後は意思をリセットする。
+function handleRunYearUpdate(fiscalYear) {
+  const sheet = getSheet('members');
+  const data = sheet.getDataRange().getValues();
+  const wCol = colNum('members', 'isWithdrawn');
+  const nyCol = colNum('members', 'nextYearStatus');
+  const insCol = colNum('members', 'insuranceEnrolled');
+  const insAtCol = colNum('members', 'insuranceEnrolledAt');
+  const apr = fiscalYear + '-04-01';
+  let withdrawn = 0, continued = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = i + 1;
+    if (data[i][wCol - 1] === true || String(data[i][wCol - 1]) === 'true') continue; // 既退会
+    const ny = String(data[i][nyCol - 1] || '');
+    if (ny === 'withdraw') {
+      sheet.getRange(row, wCol).setValue(true);
+      sheet.getRange(row, nyCol).setValue('');
+      withdrawn++;
+    } else {
+      const insured = data[i][insCol - 1] === true || String(data[i][insCol - 1]) === 'true';
+      if (insured) sheet.getRange(row, insAtCol).setValue(apr);
+      sheet.getRange(row, nyCol).setValue('');
+      continued++;
+    }
+  }
+  return { success: true, data: { withdrawn: withdrawn, continued: continued } };
 }
 
 // 保険加入を一括設定（会員番号で照合し、加入フラグON＋加入日を更新・管理者専用）。

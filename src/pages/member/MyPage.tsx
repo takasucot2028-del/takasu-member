@@ -73,6 +73,12 @@ export default function MyPage() {
     }
   };
 
+  const handleNextYear = async (id: string, value: string) => {
+    await updateMemberData(id, { nextYearStatus: value as Member['nextYearStatus'] });
+    setHousehold(members.map(x => (x.id === id ? { ...x, nextYearStatus: value as Member['nextYearStatus'] } : x)));
+    setMsg({ type: 'success', text: '翌年度の意思を保存しました' });
+  };
+
   const handleWithdraw = async () => {
     const label = member.memberType === 'group' ? member.groupName : `${member.lastName} ${member.firstName}`;
     if (!confirm(`${label} さんを退会しますか？この操作は取り消せません。`)) return;
@@ -247,6 +253,28 @@ export default function MyPage() {
             )}
           </Card>
         )}
+
+        {/* 翌年度の継続手続き */}
+        <Card>
+          <h3 className="font-medium text-gray-700 text-sm mb-1">翌年度の継続手続き</h3>
+          <p className="text-xs text-gray-500 mb-3">翌年度も継続するか退会するかを、3月末までに選択してください。</p>
+          <div className="space-y-2">
+            {members.map(m => (
+              <div key={m.id} className="flex justify-between items-center gap-2">
+                <span className="text-sm">{m.memberType === 'group' ? m.groupName : `${m.lastName} ${m.firstName}`}</span>
+                <Select
+                  value={m.nextYearStatus || ''}
+                  onChange={e => handleNextYear(m.id, e.target.value)}
+                  className="w-40"
+                >
+                  <option value="">未選択</option>
+                  <option value="continue">継続する</option>
+                  <option value="withdraw">退会する</option>
+                </Select>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         {/* 請求・振替予定 */}
         <Card>

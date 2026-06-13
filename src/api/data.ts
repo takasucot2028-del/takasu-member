@@ -101,6 +101,14 @@ export async function bulkUpdateInsurance(
   return res.data ?? { updated: 0, notFound: [] };
 }
 
+// 年度更新（一括繰越・管理者専用）
+export async function runYearUpdate(fiscalYear: number): Promise<{ withdrawn: number; continued: number }> {
+  if (!USE_GAS) return local.runYearUpdateLocal(fiscalYear);
+  const res = await gas.runYearUpdate(fiscalYear, token());
+  if (!res.success) throw new Error(res.error || '年度更新に失敗しました');
+  return res.data ?? { withdrawn: 0, continued: 0 };
+}
+
 export async function getMembersByCourse(courseId: string): Promise<Member[]> {
   if (!USE_GAS) return local.getMembersByCourseLocal(courseId);
   return unwrap(await gas.getMembersByCoourse(courseId, token()), []);

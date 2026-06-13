@@ -48,6 +48,10 @@ export const bulkUpdateInsurance = (
   token: string
 ) => request<{ updated: number; notFound: string[] }>('bulkUpdateInsurance', { updates, token });
 
+// 年度更新（一括繰越・管理者専用）
+export const runYearUpdate = (fiscalYear: number, token: string) =>
+  request<{ withdrawn: number; continued: number }>('runYearUpdate', { fiscalYear, token });
+
 export const getMember = (memberId: string, token: string) =>
   request<Member>('getMember', { memberId, token });
 

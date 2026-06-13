@@ -118,6 +118,25 @@ export function updateMemberData(id: string, data: Partial<Member>): Member | un
   return members[idx];
 }
 
+// 年度更新（一括繰越）。退会希望を退会処理、継続/未回答は保険加入日を新年度4/1に更新。
+export function runYearUpdateLocal(fiscalYear: number): { withdrawn: number; continued: number } {
+  const members = loadMembers();
+  const apr = `${fiscalYear}-04-01`;
+  let withdrawn = 0, continued = 0;
+  members.forEach((m, i) => {
+    if (m.isWithdrawn) return;
+    if (m.nextYearStatus === 'withdraw') {
+      members[i] = { ...m, isWithdrawn: true, nextYearStatus: '' };
+      withdrawn++;
+    } else {
+      members[i] = { ...m, nextYearStatus: '', insuranceEnrolledAt: m.insuranceEnrolled ? apr : (m.insuranceEnrolledAt || '') };
+      continued++;
+    }
+  });
+  saveMembers(members);
+  return { withdrawn, continued };
+}
+
 // 保険加入を一括設定（会員番号で照合）。{updated, notFound} を返す。
 export function bulkUpdateInsuranceLocal(
   updates: { memberNumber: string; insuranceEnrolledAt: string }[]
