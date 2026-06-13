@@ -90,6 +90,16 @@ export async function getAllMembers(): Promise<Member[]> {
   return unwrap(await gas.getMembers(token()), []);
 }
 
+// 保険加入の一括設定（会員番号で照合）
+export async function bulkUpdateInsurance(
+  updates: { memberNumber: string; insuranceEnrolledAt: string }[]
+): Promise<{ updated: number; notFound: string[] }> {
+  if (!USE_GAS) return local.bulkUpdateInsuranceLocal(updates);
+  const res = await gas.bulkUpdateInsurance(updates, token());
+  if (!res.success) throw new Error(res.error || '保険の一括更新に失敗しました');
+  return res.data ?? { updated: 0, notFound: [] };
+}
+
 export async function getMembersByCourse(courseId: string): Promise<Member[]> {
   if (!USE_GAS) return local.getMembersByCourseLocal(courseId);
   return unwrap(await gas.getMembersByCoourse(courseId, token()), []);

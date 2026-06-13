@@ -42,6 +42,12 @@ export const registerMember = (data: MemberFormData) =>
 export const bulkRegister = (members: Record<string, unknown>[], token: string) =>
   request<{ created: number; members: { id: string; memberNumber: string }[] }>('bulkRegister', { members, token });
 
+// 保険加入の一括設定（会員番号で照合・管理者専用）
+export const bulkUpdateInsurance = (
+  updates: { memberNumber: string; insuranceEnrolledAt: string }[],
+  token: string
+) => request<{ updated: number; notFound: string[] }>('bulkUpdateInsurance', { updates, token });
+
 export const getMember = (memberId: string, token: string) =>
   request<Member>('getMember', { memberId, token });
 

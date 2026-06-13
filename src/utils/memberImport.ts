@@ -40,6 +40,40 @@ export interface ParseResult {
   errors: string[];
 }
 
+// === 保険加入の一括インポート ===
+export const INSURANCE_IMPORT_HEADERS = ['会員番号', '保険加入日'] as const;
+
+export interface InsuranceUpdate {
+  memberNumber: string;
+  insuranceEnrolledAt: string;
+}
+
+export function downloadInsuranceTemplate(): void {
+  const ws = XLSX.utils.aoa_to_sheet([INSURANCE_IMPORT_HEADERS as unknown as string[]]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '保険加入インポート');
+  XLSX.writeFile(wb, '保険加入インポートテンプレート.xlsx');
+}
+
+export function parseInsuranceWorkbook(buffer: ArrayBuffer): { updates: InsuranceUpdate[]; errors: string[] } {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+  const updates: InsuranceUpdate[] = [];
+  const errors: string[] = [];
+  rows.forEach((row, i) => {
+    const lineNo = i + 2;
+    const memberNumber = str(row['会員番号']);
+    if (!memberNumber) return; // 空行スキップ
+    const insuranceEnrolledAt = dateStr(row['保険加入日']);
+    if (!insuranceEnrolledAt) {
+      errors.push(`${lineNo}行目: 保険加入日が未入力です（${memberNumber}）`);
+      return;
+    }
+    updates.push({ memberNumber, insuranceEnrolledAt });
+  });
+  return { updates, errors };
+}
+
 // 空テンプレート（見出しのみ）をダウンロードさせる
 export function downloadTemplate(): void {
   const ws = XLSX.utils.aoa_to_sheet([IMPORT_HEADERS as unknown as string[]]);

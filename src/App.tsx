@@ -12,6 +12,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import MemberList from './pages/admin/MemberList';
 import MemberDetail from './pages/admin/MemberDetail';
 import CourseRoster from './pages/admin/CourseRoster';
+import Insurance from './pages/admin/Insurance';
 import Billing from './pages/admin/Billing';
 import GroupBillingPage from './pages/admin/GroupBilling';
 import UnpaidBilling from './pages/admin/UnpaidBilling';
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/admin/members" element={<AdminGuard><MemberList /></AdminGuard>} />
         <Route path="/admin/member/:id" element={<AdminGuard><MemberDetail /></AdminGuard>} />
         <Route path="/admin/courses" element={<AdminGuard><CourseRoster /></AdminGuard>} />
+        <Route path="/admin/insurance" element={<AdminGuard><Insurance /></AdminGuard>} />
         <Route path="/admin/billing" element={<AdminGuard><Billing /></AdminGuard>} />
         <Route path="/admin/billing/group" element={<AdminGuard><GroupBillingPage /></AdminGuard>} />
         <Route path="/admin/billing/unpaid" element={<AdminGuard><UnpaidBilling /></AdminGuard>} />

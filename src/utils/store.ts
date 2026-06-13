@@ -117,6 +117,27 @@ export function updateMemberData(id: string, data: Partial<Member>): Member | un
   return members[idx];
 }
 
+// 保険加入を一括設定（会員番号で照合）。{updated, notFound} を返す。
+export function bulkUpdateInsuranceLocal(
+  updates: { memberNumber: string; insuranceEnrolledAt: string }[]
+): { updated: number; notFound: string[] } {
+  const members = loadMembers();
+  let updated = 0;
+  const notFound: string[] = [];
+  updates.forEach(u => {
+    const idx = members.findIndex(m => m.memberNumber === u.memberNumber);
+    if (idx < 0) { notFound.push(u.memberNumber); return; }
+    members[idx] = {
+      ...members[idx],
+      insuranceEnrolled: true,
+      insuranceEnrolledAt: u.insuranceEnrolledAt || members[idx].insuranceEnrolledAt || '',
+    };
+    updated++;
+  });
+  saveMembers(members);
+  return { updated, notFound };
+}
+
 export function searchMembersLocal(query: string): Member[] {
   const q = query.toLowerCase();
   return loadMembers().filter(m =>

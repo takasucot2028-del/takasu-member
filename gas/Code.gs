@@ -251,6 +251,9 @@ function doPost(e) {
       case 'bulkRegister':
         result = handleBulkRegister(body.members);
         break;
+      case 'bulkUpdateInsurance':
+        result = handleBulkUpdateInsurance(body.updates);
+        break;
       case 'getMember':
         result = handleGetMember(body.memberId);
         break;
@@ -457,6 +460,28 @@ function handleBulkRegister(members) {
   // 1回の書き込みでまとめて追記
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   return { success: true, data: { created: rows.length, members: created } };
+}
+
+// 保険加入を一括設定（会員番号で照合し、加入フラグON＋加入日を更新・管理者専用）。
+function handleBulkUpdateInsurance(updates) {
+  const sheet = getSheet('members');
+  const data = sheet.getDataRange().getValues();
+  const numCol = colNum('members', 'memberNumber') - 1;
+  const enrolledCol = colNum('members', 'insuranceEnrolled');
+  const dateCol = colNum('members', 'insuranceEnrolledAt');
+  const byNum = {};
+  for (let i = 1; i < data.length; i++) byNum[String(data[i][numCol])] = i + 1;
+
+  let updated = 0;
+  const notFound = [];
+  (updates || []).forEach(function (u) {
+    const row = byNum[String(u.memberNumber)];
+    if (!row) { notFound.push(u.memberNumber); return; }
+    sheet.getRange(row, enrolledCol).setValue(true);
+    if (u.insuranceEnrolledAt) sheet.getRange(row, dateCol).setValue(u.insuranceEnrolledAt);
+    updated++;
+  });
+  return { success: true, data: { updated: updated, notFound: notFound } };
 }
 
 function handleGetMember(memberId) {
