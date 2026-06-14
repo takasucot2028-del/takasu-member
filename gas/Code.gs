@@ -416,7 +416,7 @@ function handleRegister(data) {
   const memberNumber = nextMemberNumber(sheet);
   const hash = hashPassword(data.password);
   const courseIds = (data.courseIds || []).join(',');
-  const now = new Date().toISOString().slice(0, 10);
+  const now = data.registeredAt || new Date().toISOString().slice(0, 10);
 
   const row = [
     id, memberNumber, data.memberType,
@@ -450,7 +450,7 @@ function handleBulkRegister(members) {
     if (!isNaN(num) && num > max) max = num;
   }
 
-  const now = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
   const rows = [];
   const created = [];
   members.forEach(function (d) {
@@ -463,7 +463,7 @@ function handleBulkRegister(members) {
       id, memberNumber, d.memberType,
       d.lastName, d.firstName, d.lastNameKana, d.firstNameKana,
       d.birthDate, d.postalCode || '', d.address, d.areaType,
-      d.phone, d.email, hash, courseIds, false, now,
+      d.phone, d.email, hash, courseIds, false, d.registeredAt || today,
       d.school || '', d.guardianLastName || '', d.guardianFirstName || '',
       d.guardianLastNameKana || '', d.guardianFirstNameKana || '',
       d.guardianPhone || '', d.guardianEmail || '',

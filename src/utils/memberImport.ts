@@ -13,7 +13,7 @@ export const IMPORT_HEADERS = [
   'メールアドレス', 'パスワード', '教室（カンマ区切り）',
   '通学先', '保護者姓', '保護者名', '保護者セイ', '保護者メイ', '保護者電話', '保護者メール',
   '団体名', '代表者氏名', '加入人数',
-  'CSS番号', '保険加入', '保険加入日',
+  'CSS番号', '保険加入', '保険加入日', '登録日',
 ] as const;
 
 // インポート時のパスワード未指定者に割り当てる暫定パスワード（要・各自変更）
@@ -208,6 +208,7 @@ export function parseWorkbook(buffer: ArrayBuffer): ParseResult {
       cssNumber: str(row['CSS番号']),
       insuranceEnrolled: boolFrom(row['保険加入']),
       insuranceEnrolledAt: dateStr(row['保険加入日']),
+      registeredAt: dateStr(row['登録日']),
     });
   });
 

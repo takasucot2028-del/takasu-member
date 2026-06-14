@@ -91,7 +91,7 @@ export function registerNewMember(data: Record<string, unknown> & { password?: s
     id: genId(),
     memberNumber: nextMemberNumber(members),
     isWithdrawn: false,
-    registeredAt: new Date().toISOString().slice(0, 10),
+    registeredAt: (data.registeredAt as string) || new Date().toISOString().slice(0, 10),
   };
   if (data.password) {
     localStorage.setItem(`tsc_pw_${member.id}`, JSON.stringify(data.password));
