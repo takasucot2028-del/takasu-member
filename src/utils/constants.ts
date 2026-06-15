@@ -4,6 +4,7 @@ export const COURSES: Course[] = [
   { id: 'c01', name: 'スポーツやってみ隊', paymentMethod: 'term3', category: 'classroom', feeInTown: 5000, feeOutOfTown: 5000, note: '3期払い' },
   { id: 'c02', name: '運動遊び隊', paymentMethod: 'term3', category: 'classroom', feeInTown: 5000, feeOutOfTown: 5000, note: '3期払い' },
   { id: 'c03', name: '小学生水泳教室', paymentMethod: 'term1', category: 'consigned', feeInTown: 2000, feeOutOfTown: 2000, note: '1期払い' },
+  { id: 'c25', name: '水泳教室（大人）', paymentMethod: 'none', category: 'consigned', feeInTown: 0, feeOutOfTown: 0, note: '年会費のみ（参加費の徴収なし）' },
   { id: 'c04', name: '幼児水泳教室', paymentMethod: 'term1', category: 'consigned', feeInTown: 2000, feeOutOfTown: 2000, note: '1期払い' },
   { id: 'c05', name: 'ダンス教室', paymentMethod: 'term3', category: 'classroom', feeInTown: 6000, feeOutOfTown: 6000, note: '3期払い' },
   { id: 'c06', name: '英会話教室', paymentMethod: 'monthly', category: 'classroom', feeInTown: 5000, feeOutOfTown: 5000, note: '毎月払い' },
