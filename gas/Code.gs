@@ -629,7 +629,8 @@ function handleGetMembersByCourse(courseId) {
 
 function handleGetBilling(yearMonth) {
   const sheet = getSheet('billing');
-  const records = sheetToObjects(sheet, 'billing').filter(r => r.yearMonth === yearMonth);
+  const records = sheetToObjects(sheet, 'billing').filter(function (r) { return ym7(r.yearMonth) === yearMonth; });
+  records.forEach(function (r) { r.yearMonth = ym7(r.yearMonth); });
   return { success: true, data: records };
 }
 
@@ -652,6 +653,14 @@ const BILLING_COLUMNS = colKeys('billing');
 
 function billingRecordToRow(r) {
   return BILLING_COLUMNS.map(c => (r[c] !== undefined && r[c] !== null) ? r[c] : '');
+}
+
+// 対象年月を 'YYYY-MM' に正規化（スプレッドシートが '2026-07' を日付化するため）
+function ym7(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM');
+  }
+  return String(v == null ? '' : v).slice(0, 7);
 }
 
 // 請求レコードを保存（id一致は更新、新規は追加）
@@ -685,7 +694,7 @@ function handleReplaceMonthlyBilling(yearMonth, records) {
   const kept = [];
   for (let i = 1; i < data.length; i++) {
     const id = String(data[i][0]);
-    const ym = String(data[i][ymCol]);
+    const ym = ym7(data[i][ymCol]);
     if (ym === yearMonth && id.indexOf('-adj-') === -1) continue;
     kept.push(fit(data[i]));
   }
@@ -707,6 +716,7 @@ function handleGetMemberBilling(token) {
   const records = sheetToObjects(sheet, 'billing').filter(function (r) {
     return ids.indexOf(r.memberId) !== -1;
   });
+  records.forEach(function (r) { r.yearMonth = ym7(r.yearMonth); });
   return { success: true, data: records };
 }
 
@@ -714,6 +724,7 @@ function handleGetMemberBilling(token) {
 function handleGetFailedBillings() {
   const sheet = getSheet('billing');
   const records = sheetToObjects(sheet, 'billing').filter(r => r.status === 'failed');
+  records.forEach(function (r) { r.yearMonth = ym7(r.yearMonth); });
   return { success: true, data: records };
 }
 
