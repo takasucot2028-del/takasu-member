@@ -672,25 +672,30 @@ function handleSaveBillingRecords(records) {
   return { success: true };
 }
 
-// 対象月の自動生成レコードを置換（id に `-adj-` を含む手動調整は保持）
+// 対象月の自動生成レコードを置換（id に `-adj-` を含む手動調整は保持）。
+// 大量レコードでも高速・タイムアウトしないよう、1行ずつでなく一括で書き込む。
 function handleReplaceMonthlyBilling(yearMonth, records) {
   const sheet = getSheet('billing');
+  const ncol = BILLING_COLUMNS.length;
   const data = sheet.getDataRange().getValues();
-  const idCol = 0;
   const ymCol = BILLING_COLUMNS.indexOf('yearMonth');
+  const fit = function (r) { const x = r.slice(0, ncol); while (x.length < ncol) x.push(''); return x; };
 
-  // 削除対象の行番号を収集（対象月かつ手動調整でないもの）
-  const rowsToDelete = [];
+  // 残す行: 対象月の自動生成分（id に -adj- を含まない）以外
+  const kept = [];
   for (let i = 1; i < data.length; i++) {
-    const id = String(data[i][idCol]);
+    const id = String(data[i][0]);
     const ym = String(data[i][ymCol]);
-    if (ym === yearMonth && id.indexOf('-adj-') === -1) rowsToDelete.push(i + 1);
+    if (ym === yearMonth && id.indexOf('-adj-') === -1) continue;
+    kept.push(fit(data[i]));
   }
-  // 下から削除して行番号のずれを防ぐ
-  rowsToDelete.sort((a, b) => b - a).forEach(rowNum => sheet.deleteRow(rowNum));
+  const newRows = (records || []).map(function (r) { return billingRecordToRow(r); });
+  const out = [colLabels('billing')].concat(kept).concat(newRows);
 
-  // 新しい自動生成レコードを追加
-  (records || []).forEach(r => sheet.appendRow(billingRecordToRow(r)));
+  // 既存をクリアして一括書き込み（appendRow/deleteRow のループを排してタイムアウト回避）
+  sheet.clearContents();
+  sheet.getRange(1, 1, out.length, ncol).setValues(out);
+  sheet.setFrozenRows(1);
   return { success: true };
 }
 

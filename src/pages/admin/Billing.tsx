@@ -64,7 +64,12 @@ export default function Billing() {
 
   const loadBilling = async () => setRecords(await getBillingByMonth(yearMonth));
 
+  const [generating, setGenerating] = useState(false);
+
   const generateBilling = async () => {
+   setGenerating(true);
+   setMsg('請求データを生成中です…');
+   try {
     const year = parseInt(yearMonth.split('-')[0], 10);
     const month = parseInt(yearMonth.split('-')[1], 10);
     const due = `${year}-${String(month).padStart(2, '0')}-27`;
@@ -140,6 +145,11 @@ export default function Billing() {
     await replaceMonthlyBilling(yearMonth, newRecords);
     await loadBilling();
     setMsg(`${yearMonth}の継続会費を${newRecords.length}件生成しました`);
+   } catch (e) {
+     setMsg(`請求生成でエラーが発生しました: ${e instanceof Error ? e.message : String(e)}`);
+   } finally {
+     setGenerating(false);
+   }
   };
 
   const toggleStatus = async (id: string, status: string) => {
@@ -225,7 +235,7 @@ export default function Billing() {
       <Card>
         <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-wrap">
           <Input type="month" value={yearMonth} onChange={e => setYearMonth(e.target.value)} className="w-44" />
-          <Button size="sm" onClick={generateBilling}>請求データ生成</Button>
+          <Button size="sm" onClick={generateBilling} disabled={generating}>{generating ? '生成中…' : '請求データ生成'}</Button>
           <Button size="sm" variant="secondary" onClick={openSchedule}>請求月設定</Button>
           <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>
           <Button size="sm" variant="secondary" onClick={() => { setSpecialModal({ memberId: '', memberName: '' }); setSpMemberId(''); setSpAmount(''); setSpNote(''); setSpDue(''); }}>特別徴収追加</Button>
