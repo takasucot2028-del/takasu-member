@@ -259,6 +259,9 @@ function doPost(e) {
       case 'bulkUpdateInsurance':
         result = handleBulkUpdateInsurance(body.updates);
         break;
+      case 'bulkUpdateCss':
+        result = handleBulkUpdateCss(body.updates);
+        break;
       case 'runYearUpdate':
         result = handleRunYearUpdate(body.fiscalYear);
         break;
@@ -507,6 +510,23 @@ function handleRunYearUpdate(fiscalYear) {
     }
   }
   return { success: true, data: { withdrawn: withdrawn, continued: continued } };
+}
+
+// CSS番号（口座振替番号）を会員IDで一括設定（管理者専用）。
+function handleBulkUpdateCss(updates) {
+  const sheet = getSheet('members');
+  const data = sheet.getDataRange().getValues();
+  const cssCol = colNum('members', 'cssNumber');
+  const idToRow = {};
+  for (let i = 1; i < data.length; i++) idToRow[data[i][0]] = i + 1;
+  let updated = 0, notFound = 0;
+  (updates || []).forEach(function (u) {
+    const row = idToRow[u.memberId];
+    if (!row) { notFound++; return; }
+    sheet.getRange(row, cssCol).setValue(String(u.cssNumber));
+    updated++;
+  });
+  return { success: true, data: { updated: updated, notFound: notFound } };
 }
 
 // 保険加入を一括設定（会員番号で照合し、加入フラグON＋加入日を更新・管理者専用）。

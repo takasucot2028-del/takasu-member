@@ -19,6 +19,69 @@ export const CSS_COLUMNS = [
   '年会費X', '参加費X', '保険料X', '参加費（地域クラブ）X', '参加費（委託）X', '最終振替年月',
 ];
 
+// === CSS加入者一覧からCSS番号を会員に紐付け（氏名照合・携帯で補助） ===
+export interface CssMatchResult {
+  updates: { memberId: string; cssNumber: string; memberNumber: string; name: string }[];
+  unmatched: string[];   // 一致する会員が見つからない加入者名
+  ambiguous: string[];   // 候補が複数あり特定できない
+}
+
+// ひらがな→カタカナ＋空白除去（会員のカナ＝ひらがな、CSS＝カタカナの差を吸収）
+const toKatakana = (s: string) => s.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+const normKana = (s: string) => toKatakana(s).replace(/[\s　]/g, '');
+const normKanji = (s: string) => s.replace(/[\s　]/g, '');
+
+export function matchCssNumbers(buffer: ArrayBuffer, members: Member[]): CssMatchResult {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+  const dig = (v: unknown) => String(v ?? '').replace(/[^0-9]/g, '');
+  // 会員索引: 漢字（姓+名）／カナ（セイ+メイ・カタカナ正規化）
+  const byKanji: Record<string, Member[]> = {};
+  const byKana: Record<string, Member[]> = {};
+  members.filter(m => !m.isWithdrawn).forEach(m => {
+    (byKanji[normKanji(m.lastName + m.firstName)] ||= []).push(m);
+    const kk = normKana(`${m.lastNameKana || ''}${m.firstNameKana || ''}`);
+    if (kk) (byKana[kk] ||= []).push(m);
+  });
+
+  const updates: CssMatchResult['updates'] = [];
+  const unmatched: string[] = [];
+  const ambiguous: string[] = [];
+  const seen = new Set<string>();
+
+  rows.slice(1).forEach(r => {
+    const code = String(r[1] ?? '').trim();
+    const fullName = String(r[3] ?? '').trim();       // 例「遠藤　梨々花・有紗」
+    const fullKana = String(r[2] ?? '').trim();       // 例「エンドウ　リリカ・アリサ」
+    const phone = dig(r[19]);
+    if (!code || !fullName) return;
+    const parts = fullName.split(/[\s　]+/);
+    if (parts.length < 2) { unmatched.push(`${code}: ${fullName}`); return; }
+    const lastName = parts[0];
+    const firstNames = parts.slice(1).join('').split('・').filter(Boolean);
+    const kparts = fullKana.split(/[\s　]+/);
+    const lastKana = kparts[0] || '';
+    const firstKanas = (kparts.slice(1).join('') || '').split('・');
+    firstNames.forEach((fn, i) => {
+      let cands = (byKanji[normKanji(lastName + fn)] || []).filter(m => !seen.has(m.id));
+      if (cands.length === 0 && lastKana && firstKanas[i]) {
+        cands = (byKana[normKana(lastKana + firstKanas[i])] || []).filter(m => !seen.has(m.id));
+      }
+      if (cands.length > 1 && phone) {
+        const byPhone = cands.filter(m => dig(m.phone) === phone || dig(m.guardianPhone) === phone);
+        if (byPhone.length >= 1) cands = byPhone;
+      }
+      if (cands.length === 0) unmatched.push(`${lastName} ${fn}（CSS番号 ${code}）`);
+      else if (cands.length > 1) ambiguous.push(`${lastName} ${fn}（CSS番号 ${code}・候補${cands.length}名）`);
+      else {
+        const m = cands[0]; seen.add(m.id);
+        updates.push({ memberId: m.id, cssNumber: code, memberNumber: m.memberNumber, name: `${m.lastName} ${m.firstName}` });
+      }
+    });
+  });
+  return { updates, unmatched, ambiguous };
+}
+
 interface Agg {
   code: string;
   memberIds: Set<string>;

@@ -118,6 +118,22 @@ export function updateMemberData(id: string, data: Partial<Member>): Member | un
   return members[idx];
 }
 
+// CSS番号を会員IDで一括設定。
+export function bulkUpdateCssLocal(
+  updates: { memberId: string; cssNumber: string }[]
+): { updated: number; notFound: number } {
+  const members = loadMembers();
+  let updated = 0, notFound = 0;
+  updates.forEach(u => {
+    const idx = members.findIndex(m => m.id === u.memberId);
+    if (idx < 0) { notFound++; return; }
+    members[idx] = { ...members[idx], cssNumber: String(u.cssNumber) };
+    updated++;
+  });
+  saveMembers(members);
+  return { updated, notFound };
+}
+
 // 年度更新（一括繰越）。退会希望を退会処理、継続/未回答は保険加入日を新年度4/1に更新。
 export function runYearUpdateLocal(fiscalYear: number): { withdrawn: number; continued: number } {
   const members = loadMembers();

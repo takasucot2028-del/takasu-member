@@ -52,6 +52,10 @@ export const bulkUpdateInsurance = (
 export const runYearUpdate = (fiscalYear: number, token: string) =>
   request<{ withdrawn: number; continued: number }>('runYearUpdate', { fiscalYear, token });
 
+// CSS番号を会員IDで一括設定（管理者専用）
+export const bulkUpdateCss = (updates: { memberId: string; cssNumber: string }[], token: string) =>
+  request<{ updated: number; notFound: number }>('bulkUpdateCss', { updates, token });
+
 export const getMember = (memberId: string, token: string) =>
   request<Member>('getMember', { memberId, token });
 

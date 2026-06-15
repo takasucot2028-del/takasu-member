@@ -101,6 +101,16 @@ export async function bulkUpdateInsurance(
   return res.data ?? { updated: 0, notFound: [] };
 }
 
+// CSS番号を会員IDで一括設定
+export async function bulkUpdateCss(
+  updates: { memberId: string; cssNumber: string }[]
+): Promise<{ updated: number; notFound: number }> {
+  if (!USE_GAS) return local.bulkUpdateCssLocal(updates);
+  const res = await gas.bulkUpdateCss(updates, token());
+  if (!res.success) throw new Error(res.error || 'CSS番号の一括更新に失敗しました');
+  return res.data ?? { updated: 0, notFound: 0 };
+}
+
 // 年度更新（一括繰越・管理者専用）
 export async function runYearUpdate(fiscalYear: number): Promise<{ withdrawn: number; continued: number }> {
   if (!USE_GAS) return local.runYearUpdateLocal(fiscalYear);

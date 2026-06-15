@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Alert } from '../../components/UI';
 import { BILLING_STATUS_LABELS } from '../../utils/constants';
-import { getAllMembers, getBillingByMonth, getAllGroupBillings } from '../../api/data';
-import { downloadCssExport, downloadResultReport } from '../../utils/transfer';
+import { getAllMembers, getBillingByMonth, getAllGroupBillings, bulkUpdateCss } from '../../api/data';
+import { downloadCssExport, downloadResultReport, matchCssNumbers, type CssMatchResult } from '../../utils/transfer';
 import type { Member, BillingRecord, GroupBilling } from '../../types';
 
 function currentYearMonth(): string {
@@ -16,6 +16,11 @@ export default function Transfer() {
   const [billing, setBilling] = useState<BillingRecord[]>([]);
   const [groups, setGroups] = useState<GroupBilling[]>([]);
   const [msg, setMsg] = useState('');
+
+  // CSS番号一括設定
+  const cssFileRef = useRef<HTMLInputElement>(null);
+  const [cssResult, setCssResult] = useState<CssMatchResult | null>(null);
+  const [cssRunning, setCssRunning] = useState(false);
 
   const load = async () => {
     setMembers(await getAllMembers());
@@ -36,6 +41,28 @@ export default function Transfer() {
   const exportResult = () => {
     downloadResultReport(yearMonth, billing);
     setMsg('振替結果帳票を出力しました');
+  };
+
+  const handleCssFile = async (file: File) => {
+    setMsg('');
+    const buffer = await file.arrayBuffer();
+    setCssResult(matchCssNumbers(buffer, members));
+  };
+  const runCss = async () => {
+    if (!cssResult) return;
+    setCssRunning(true);
+    let resultMsg = '';
+    try {
+      const res = await bulkUpdateCss(cssResult.updates.map(u => ({ memberId: u.memberId, cssNumber: u.cssNumber })));
+      resultMsg = `CSS番号を${res.updated}件設定しました`;
+    } catch (e) {
+      resultMsg = `設定に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    setCssRunning(false);
+    setCssResult(null);
+    if (cssFileRef.current) cssFileRef.current.value = '';
+    setMsg(resultMsg);
+    await load();
   };
 
   return (
@@ -63,6 +90,37 @@ export default function Transfer() {
               CSS番号が未設定の会員が {missingCss.length}件 あります（口座振替できません）。会員詳細でCSS番号を設定してください：
               {' '}{missingCss.slice(0, 10).map(r => r.memberName).join('、')}{missingCss.length > 10 ? ' ほか' : ''}
             </Alert>
+          )}
+        </Card>
+
+        {/* CSS番号 一括設定 */}
+        <Card>
+          <h3 className="font-medium text-gray-700 text-sm mb-1">CSS番号の一括設定</h3>
+          <p className="text-xs text-gray-500 mb-2">
+            CSS加入者一覧（Excel）をアップロードすると、加入者名で会員を照合し、各会員にCSS番号を設定します（携帯番号で補助照合）。
+          </p>
+          <input
+            ref={cssFileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleCssFile(f); }}
+            className="block text-xs text-gray-600"
+          />
+          {cssResult && (
+            <div className="mt-3 space-y-2">
+              <Alert type="info">照合できた会員: <strong>{cssResult.updates.length}件</strong></Alert>
+              {(cssResult.unmatched.length > 0 || cssResult.ambiguous.length > 0) && (
+                <Alert type="error">
+                  <div className="font-medium mb-1">手動対応が必要: 未照合 {cssResult.unmatched.length}件 / 候補複数 {cssResult.ambiguous.length}件</div>
+                  <ul className="list-disc list-inside max-h-32 overflow-auto text-xs">
+                    {[...cssResult.unmatched, ...cssResult.ambiguous].slice(0, 30).map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                </Alert>
+              )}
+              <Button onClick={runCss} disabled={cssResult.updates.length === 0 || cssRunning}>
+                {cssRunning ? '設定中…' : `${cssResult.updates.length}件にCSS番号を設定`}
+              </Button>
+            </div>
           )}
         </Card>
 
