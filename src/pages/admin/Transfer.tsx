@@ -46,7 +46,10 @@ export default function Transfer() {
   const handleCssFile = async (file: File) => {
     setMsg('');
     const buffer = await file.arrayBuffer();
-    setCssResult(matchCssNumbers(buffer, members));
+    // 会員リストが未読込のまま照合されないよう、必ず最新を取得して使う
+    const mems = await getAllMembers();
+    if (mems.length === 0) { setMsg('会員データを取得できませんでした。再読み込みしてからお試しください。'); return; }
+    setCssResult(matchCssNumbers(buffer, mems));
   };
   const runCss = async () => {
     if (!cssResult) return;
