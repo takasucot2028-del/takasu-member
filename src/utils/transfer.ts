@@ -119,6 +119,9 @@ export function buildCssRows(
   billing.forEach(r => {
     const m = byId[r.memberId];
     const code = (m?.cssNumber || '').trim();
+    // CSS番号が無い会員は口座振替できないため出力に含めない（画面の警告で別途一覧表示）。
+    // 含めると全員が「空コードの1行」に合算され、正しく振替できなくなる。
+    if (!code) return;
     const a = aggFor(code);
     if (m) {
       a.memberIds.add(m.id);
@@ -138,6 +141,7 @@ export function buildCssRows(
     .forEach(g => {
       const m = byId[g.memberId];
       const code = (m?.cssNumber || '').trim();
+      if (!code) return; // CSS番号なしは振替不可のため出力対象外
       const a = aggFor(code);
       if (m) a.memberIds.add(m.id);
       a.sanka += g.amount || 0;
