@@ -32,7 +32,7 @@ export default function Transfer() {
   const groupsThisMonth = groups.filter(g => (g.dueDate || '').slice(0, 7) === yearMonth && g.status !== 'completed' && g.status !== 'failed');
   const billingTotal = billing.reduce((s, r) => s + r.total, 0);
   const groupTotal = groupsThisMonth.reduce((s, g) => s + g.amount, 0);
-  const missingCss = billing.filter(r => !(members.find(m => m.id === r.memberId)?.cssNumber || '').trim());
+  const missingCss = billing.filter(r => !String(members.find(m => m.id === r.memberId)?.cssNumber ?? '').trim());
 
   const exportCss = () => {
     const n = downloadCssExport(yearMonth, members, billing, groupsThisMonth);
@@ -142,7 +142,7 @@ export default function Transfer() {
             </thead>
             <tbody>
               {billing.map(r => {
-                const css = members.find(m => m.id === r.memberId)?.cssNumber || '';
+                const css = String(members.find(m => m.id === r.memberId)?.cssNumber ?? '');
                 return (
                   <tr key={r.id}>
                     <Td className="font-mono text-xs">{r.memberNumber}</Td>

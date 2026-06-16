@@ -28,6 +28,15 @@ function unwrap<T>(res: { success: boolean; data?: T; error?: string }, fallback
 export const calcAnnualFee = local.calcAnnualFee;
 export const calcInsurance = local.calcInsurance;
 
+// GAS（スプレッドシート）は数値のみのCSS番号を number として返すため、型(string)に正規化する。
+// 文字列として扱う各所（.trim() 等）でのクラッシュを防ぐ。
+function normalizeMember<T extends Member | undefined>(m: T): T {
+  if (m && m.cssNumber != null && typeof m.cssNumber !== 'string') {
+    return { ...m, cssNumber: String(m.cssNumber) };
+  }
+  return m;
+}
+
 // === 初期化（デモモードのみ管理者を作成） ===
 export function initAdmin(): void {
   if (!USE_GAS) local.initAdmin();
@@ -72,7 +81,7 @@ export async function bulkRegisterMembers(
 export async function getMemberById(id: string): Promise<Member | undefined> {
   if (!USE_GAS) return local.getMemberById(id);
   const res = await gas.getMember(id, token());
-  return res.success ? res.data : undefined;
+  return res.success ? normalizeMember(res.data) : undefined;
 }
 
 export async function updateMemberData(
@@ -88,7 +97,7 @@ export async function updateMemberData(
 
 export async function getAllMembers(): Promise<Member[]> {
   if (!USE_GAS) return local.getAllMembers();
-  return unwrap(await gas.getMembers(token()), []);
+  return unwrap(await gas.getMembers(token()), []).map(normalizeMember);
 }
 
 // 保険加入の一括設定（会員番号で照合）
@@ -121,7 +130,7 @@ export async function runYearUpdate(fiscalYear: number): Promise<{ withdrawn: nu
 
 export async function getMembersByCourse(courseId: string): Promise<Member[]> {
   if (!USE_GAS) return local.getMembersByCourseLocal(courseId);
-  return unwrap(await gas.getMembersByCoourse(courseId, token()), []);
+  return unwrap(await gas.getMembersByCoourse(courseId, token()), []).map(normalizeMember);
 }
 
 // === 月次請求 ===

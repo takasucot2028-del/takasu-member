@@ -118,7 +118,7 @@ export function buildCssRows(
   // 継続会費（当月分・特別徴収-adj-含む）
   billing.forEach(r => {
     const m = byId[r.memberId];
-    const code = (m?.cssNumber || '').trim();
+    const code = String(m?.cssNumber ?? '').trim();
     // CSS番号が無い会員は口座振替できないため出力に含めない（画面の警告で別途一覧表示）。
     // 含めると全員が「空コードの1行」に合算され、正しく振替できなくなる。
     if (!code) return;
@@ -140,7 +140,7 @@ export function buildCssRows(
     .filter(g => (g.dueDate || '').slice(0, 7) === yearMonth && g.status !== 'completed' && g.status !== 'failed')
     .forEach(g => {
       const m = byId[g.memberId];
-      const code = (m?.cssNumber || '').trim();
+      const code = String(m?.cssNumber ?? '').trim();
       if (!code) return; // CSS番号なしは振替不可のため出力対象外
       const a = aggFor(code);
       if (m) a.memberIds.add(m.id);
