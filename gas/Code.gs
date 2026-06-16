@@ -211,6 +211,33 @@ function fixPhoneLeadingZero() {
   return fixed;
 }
 
+// パスワードが「電話番号（先頭0なし）」で設定された会員のパスワードを、0付きの電話番号に
+// 再設定する。必ず fixPhoneLeadingZero() の後（電話番号が0付きに修正済みの状態）で実行する。
+// 現在のハッシュが「電話番号の先頭0を1つ除いた値」のハッシュと一致する会員だけを対象とするため、
+// 独自パスワードや元から0付き電話=パスワードの既存会員は変更されない（安全）。
+function fixPasswordLeadingZero() {
+  const sheet = getSheet('members');
+  const last = sheet.getLastRow();
+  if (last < 2) { Logger.log('会員データなし'); return 0; }
+  const pCol = colNum('members', 'phone');
+  const hCol = colNum('members', 'passwordHash');
+  const phones = sheet.getRange(2, pCol, last - 1, 1).getValues();
+  const hashes = sheet.getRange(2, hCol, last - 1, 1).getValues();
+  let fixed = 0;
+  for (let i = 0; i < phones.length; i++) {
+    const phone = String(phones[i][0] == null ? '' : phones[i][0]).trim();
+    if (!phone || phone.charAt(0) !== '0' || !/^[0-9]+$/.test(phone)) continue;
+    const oldPlain = phone.substring(1); // 取込時のパスワード候補（先頭0を1つ除去）
+    if (String(hashes[i][0]) === hashPassword(oldPlain)) {
+      hashes[i][0] = hashPassword(phone); // 0付きの電話番号で再設定
+      fixed++;
+    }
+  }
+  sheet.getRange(2, hCol, last - 1, 1).setValues(hashes);
+  Logger.log('パスワード（電話番号）の先頭0を修正: ' + fixed + '件');
+  return fixed;
+}
+
 // --- パスワードハッシュ化 ---
 function hashPassword(pw) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pw);
