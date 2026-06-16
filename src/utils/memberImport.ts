@@ -167,7 +167,8 @@ export function parseWorkbook(buffer: ArrayBuffer): ParseResult {
     } else {
       if (!lastName || !firstName) { errors.push(`${lineNo}行目: 姓・名が未入力です`); return; }
     }
-    if (!str(row['メールアドレス'])) { errors.push(`${lineNo}行目: メールアドレスが未入力です`); return; }
+    // メールアドレスは任意（事務局管理の会員はメール無しで登録する。本人ログインは不可だが
+    // 管理者が名簿・請求を管理できる。同メール＋パスワードでの世帯ログインからは除外される）。
 
     // 教室の解決（団体は教室なし）
     let courseIds: string[] = [];
