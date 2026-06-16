@@ -29,7 +29,7 @@ var SHEETS = {
     ['guardianPhone', '保護者電話'], ['guardianEmail', '保護者メール'],
     ['groupName', '団体名'], ['representativeName', '代表者氏名'], ['memberCount', '加入人数'],
     ['cssNumber', 'CSS番号'], ['insuranceEnrolled', '保険加入'], ['insuranceEnrolledAt', '保険加入日'],
-    ['nextYearStatus', '翌年度意思'],
+    ['nextYearStatus', '翌年度意思'], ['gender', '性別'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -84,6 +84,16 @@ function getSheet(key) {
     sheet.setFrozenRows(1);
   }
   return sheet;
+}
+
+// 会員シートのヘッダー行を最新の列定義に同期する（列を追加したときに手動実行）。
+// 既存データ（2行目以降）には影響せず、1行目の見出しのみを colLabels に合わせる。
+// 「性別」列など、後から追加した列の見出しを既存シートへ反映するために使う。
+function syncMemberHeaders() {
+  const sheet = getSheet('members');
+  const labels = colLabels('members');
+  sheet.getRange(1, 1, 1, labels.length).setValues([labels]);
+  Logger.log('会員シートの見出しを同期しました（' + labels.length + '列）');
 }
 
 // --- 初期セットアップ（1回だけ実行）---
@@ -486,7 +496,7 @@ function handleRegister(data) {
     data.guardianPhone || '', data.guardianEmail || '',
     data.groupName || '', data.representativeName || '', data.memberCount || 0,
     data.cssNumber || '', data.insuranceEnrolled || false, data.insuranceEnrolledAt || '',
-    data.nextYearStatus || '',
+    data.nextYearStatus || '', data.gender || '',
   ];
   sheet.appendRow(row);
 
@@ -527,7 +537,7 @@ function handleBulkRegister(members) {
       d.guardianPhone || '', d.guardianEmail || '',
       d.groupName || '', d.representativeName || '', d.memberCount || 0,
       d.cssNumber || '', d.insuranceEnrolled || false, d.insuranceEnrolledAt || '',
-      d.nextYearStatus || '',
+      d.nextYearStatus || '', d.gender || '',
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });

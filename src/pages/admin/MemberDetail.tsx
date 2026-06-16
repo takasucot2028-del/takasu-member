@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
-import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { COURSES, MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
 import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance } from '../../api/data';
 import type { Member } from '../../types';
 
@@ -88,6 +88,15 @@ export default function MemberDetail() {
                 <Field label="メイ"><Input value={form.firstNameKana || ''} onChange={e => set('firstNameKana', e.target.value)} /></Field>
               </div>
               <Field label="生年月日"><Input type="date" value={form.birthDate || ''} onChange={e => set('birthDate', e.target.value)} /></Field>
+              {member.memberType !== 'group' && (
+                <Field label="性別">
+                  <Select value={form.gender || ''} onChange={e => set('gender', e.target.value)}>
+                    <option value="">未設定</option>
+                    <option value="male">男性</option>
+                    <option value="female">女性</option>
+                  </Select>
+                </Field>
+              )}
               <Field label="住所"><Input value={form.address || ''} onChange={e => set('address', e.target.value)} /></Field>
               <Field label="町内外区分">
                 <Select value={form.areaType || 'in_town'} onChange={e => set('areaType', e.target.value)}>
@@ -166,6 +175,7 @@ export default function MemberDetail() {
               <div className="space-y-2 text-sm">
                 <Row label="氏名">{member.lastName} {member.firstName}（{member.lastNameKana} {member.firstNameKana}）</Row>
                 <Row label="生年月日">{member.birthDate}</Row>
+                {member.memberType !== 'group' && <Row label="性別">{GENDER_LABELS[member.gender || ''] || '未設定'}</Row>}
                 <Row label="住所">{member.address}</Row>
                 <Row label="区分">{member.areaType === 'in_town' ? '町内' : '町外'}</Row>
                 <Row label="電話">{member.phone}</Row>

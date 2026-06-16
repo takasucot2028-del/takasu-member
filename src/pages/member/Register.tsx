@@ -11,6 +11,7 @@ const INITIAL = {
   lastName: '', firstName: '',
   lastNameKana: '', firstNameKana: '',
   birthDate: '',
+  gender: '' as '' | 'male' | 'female',
   postalCode: '', address: '',
   areaType: 'in_town' as AreaType,
   phone: '', email: '', password: '', passwordConfirm: '',
@@ -51,6 +52,10 @@ export default function Register() {
     }
     if (form.password.length < 6) {
       setError('パスワードは6文字以上で入力してください');
+      return;
+    }
+    if (form.memberType !== 'group' && !form.gender) {
+      setError('性別を選択してください');
       return;
     }
     if (form.memberType !== 'group' && form.courseIds.length === 0) {
@@ -166,6 +171,15 @@ export default function Register() {
               <Field label="生年月日" required>
                 <Input type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)} required />
               </Field>
+              {form.memberType !== 'group' && (
+                <Field label="性別" required>
+                  <Select value={form.gender} onChange={e => set('gender', e.target.value)}>
+                    <option value="">選択してください</option>
+                    <option value="male">男性</option>
+                    <option value="female">女性</option>
+                  </Select>
+                </Field>
+              )}
               <Field label="郵便番号">
                 <Input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} placeholder="071-1200" />
               </Field>

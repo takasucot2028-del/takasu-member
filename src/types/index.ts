@@ -17,6 +17,9 @@ export type BillingStatus = 'pending' | 'billed' | 'completed' | 'failed' | 'car
 // 町内外区分
 export type AreaType = 'in_town' | 'out_of_town';
 
+// 性別（未設定可）
+export type Gender = '' | 'male' | 'female';
+
 // 教室マスタ
 export interface Course {
   id: string;
@@ -38,6 +41,7 @@ export interface Member {
   lastNameKana: string;
   firstNameKana: string;
   birthDate: string;
+  gender?: Gender;
   postalCode: string;
   address: string;
   areaType: AreaType;

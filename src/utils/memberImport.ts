@@ -9,7 +9,7 @@ import type { MemberType, AreaType } from '../types';
 
 // インポートテンプレートの列見出し（この順序・名称で出力／読込する）
 export const IMPORT_HEADERS = [
-  '会員種別', '姓', '名', 'セイ', 'メイ', '生年月日', '郵便番号', '住所', '町内外', '電話番号',
+  '会員種別', '姓', '名', 'セイ', 'メイ', '生年月日', '性別', '郵便番号', '住所', '町内外', '電話番号',
   'メールアドレス', 'パスワード', '教室（カンマ区切り）',
   '通学先', '保護者姓', '保護者名', '保護者セイ', '保護者メイ', '保護者電話', '保護者メール',
   '団体名', '代表者氏名', '加入人数',
@@ -104,6 +104,14 @@ function boolFrom(v: unknown): boolean {
   return ['on', '有', '加入', 'true', '1', '○', '◯', 'yes', 'はい'].includes(s);
 }
 
+// 「性別」列を 'male' / 'female' / '' に正規化。男/男性/M/boy などを吸収。
+function genderFrom(v: unknown): '' | 'male' | 'female' {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['男', '男性', '男子', 'm', 'male', 'boy', '1'].includes(s)) return 'male';
+  if (['女', '女性', '女子', 'f', 'female', 'girl', '2'].includes(s)) return 'female';
+  return '';
+}
+
 function dateStr(v: unknown): string {
   if (v === undefined || v === null || v === '') return '';
   if (v instanceof Date) {
@@ -189,6 +197,7 @@ export function parseWorkbook(buffer: ArrayBuffer): ParseResult {
       lastNameKana: str(row['セイ']),
       firstNameKana: str(row['メイ']),
       birthDate: dateStr(row['生年月日']),
+      gender: genderFrom(row['性別']),
       postalCode: str(row['郵便番号']),
       address: str(row['住所']),
       areaType,

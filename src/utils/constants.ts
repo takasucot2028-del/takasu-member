@@ -38,6 +38,11 @@ export const COURSE_CATEGORY_LABELS: Record<CourseCategory, string> = {
   community: '教室（地域クラブ）',
 };
 
+export const GENDER_LABELS: Record<string, string> = {
+  male: '男性',
+  female: '女性',
+};
+
 export const MEMBER_TYPE_LABELS: Record<string, string> = {
   general: '一般会員',
   junior: 'ジュニア会員',
