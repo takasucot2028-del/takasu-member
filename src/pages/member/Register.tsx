@@ -67,8 +67,7 @@ export default function Register() {
       const household = auth.members ?? (auth.member ? [auth.member] : []);
       if (auth.success && auth.token && household.length > 0) {
         login(auth.token, 'member', household);
-        setSuccess(true);
-        setTimeout(() => navigate('/mypage'), 1500);
+        setSuccess(true); // 完了画面（LINE・口座振替案内）を表示。マイページへは手動で進む
       } else {
         setError('登録は完了しましたが自動ログインに失敗しました。ログイン画面からログインしてください');
       }
@@ -78,10 +77,53 @@ export default function Register() {
   };
 
   if (success) {
+    const formUrl = `${import.meta.env.BASE_URL}kouza_furikae_irai.pdf`;
     return (
-      <PageContainer>
-        <div className="max-w-md mx-auto mt-12">
-          <Alert type="success">会員登録が完了しました。マイページに移動します...</Alert>
+      <PageContainer title="会員登録が完了しました">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Alert type="success">会員登録が完了しました。続いて、下記2点のお手続きをお願いします。</Alert>
+
+          {/* 公式LINE登録案内 */}
+          <Card>
+            <h3 className="font-medium text-gray-800 mb-1">① 公式LINEの友だち登録</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              クラブからの連絡は公式LINEで行います。下のボタンから友だち登録し、
+              「保護者氏名・お申し込みされた方のお名前」をメッセージでお知らせください。
+            </p>
+            <a href="https://lin.ee/Z13UKHE" target="_blank" rel="noopener noreferrer">
+              <Button>公式LINEに友だち登録する</Button>
+            </a>
+            <p className="text-xs text-gray-400 mt-2 break-all">https://lin.ee/Z13UKHE</p>
+          </Card>
+
+          {/* 口座振替案内 */}
+          <Card>
+            <h3 className="font-medium text-gray-800 mb-1">② 口座振替の手続き</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              会費は口座振替でお支払いいただきます。下記の「口座振替依頼書」を印刷し、
+              いずれかの方法でご提出ください。
+            </p>
+            <a href={formUrl} target="_blank" rel="noopener noreferrer" download="口座振替依頼書.pdf">
+              <Button variant="secondary">口座振替依頼書（PDF）をダウンロード</Button>
+            </a>
+            <div className="mt-3 text-sm text-gray-700 space-y-2">
+              <p className="font-medium">提出方法（いずれか）</p>
+              <div className="pl-1 space-y-2">
+                <p>
+                  <span className="font-medium">方法①</span> 依頼書を印刷し、<span className="font-medium">通帳印を押印</span>のうえ、
+                  <span className="font-medium">鷹栖町総合体育館</span> または <span className="font-medium">鷹栖町B&amp;G海洋センター</span> に提出
+                </p>
+                <p>
+                  <span className="font-medium">方法②</span> <span className="font-medium">通帳印および通帳をご持参</span>のうえ、
+                  <span className="font-medium">鷹栖町総合体育館</span> または <span className="font-medium">鷹栖町B&amp;G海洋センター</span> で用紙に記入して提出
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-center pt-2">
+            <Button onClick={() => navigate('/mypage')} className="px-8">マイページへ進む</Button>
+          </div>
         </div>
       </PageContainer>
     );
