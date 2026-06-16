@@ -21,6 +21,8 @@ export const COURSES: Course[] = [
   { id: 'c22', name: '鷹栖剣道少年団', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
   { id: 'c23', name: '鷹栖北野クロスカントリースキー少年団', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
   { id: 'c24', name: '鷹栖北野野球少年団', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
+  { id: 'c26', name: '海洋クラブ', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '会費徴収なし（年会費・保険料は会員種別で徴収）' },
+  { id: 'c27', name: 'ソルリッサ', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '会費徴収なし（年会費・保険料は会員種別で徴収）' },
   { id: 'c14', name: 'ヨガ教室', paymentMethod: 'ticket', category: 'classroom', feeInTown: 0, feeOutOfTown: 0, note: 'チケット制' },
   { id: 'c15', name: 'ストレッチ教室', paymentMethod: 'ticket', category: 'classroom', feeInTown: 0, feeOutOfTown: 0, note: 'チケット制' },
   { id: 'c16', name: 'たかスポレッチ', paymentMethod: 'ticket', category: 'classroom', feeInTown: 0, feeOutOfTown: 0, note: 'チケット制' },
