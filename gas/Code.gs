@@ -186,6 +186,31 @@ function resetAdminCredentials() {
   Logger.log('管理者アカウントを作成しました');
 }
 
+// 電話番号の先頭「0」が欠落した会員を一括修正する（移行時に数値化で 0 が消えたデータの復旧）。
+// GAS エディタから手動実行（Web App デプロイ不要）。電話番号・保護者電話が「0以外で始まる
+// 数字のみ」の場合に先頭へ 0 を付与し、列をテキスト書式にして再数値化を防ぐ。
+function fixPhoneLeadingZero() {
+  const sheet = getSheet('members');
+  const last = sheet.getLastRow();
+  if (last < 2) { Logger.log('会員データなし'); return 0; }
+  const cols = [colNum('members', 'phone'), colNum('members', 'guardianPhone')];
+  let fixed = 0;
+  cols.forEach(function (col) {
+    if (col < 1) return;
+    const rng = sheet.getRange(2, col, last - 1, 1);
+    const vals = rng.getValues();
+    for (let i = 0; i < vals.length; i++) {
+      const s = String(vals[i][0] == null ? '' : vals[i][0]).trim();
+      if (s && /^[0-9]+$/.test(s) && s.charAt(0) !== '0') { vals[i][0] = '0' + s; fixed++; }
+      else { vals[i][0] = s; } // 文字列として書き戻し、以後の数値化を防ぐ
+    }
+    rng.setNumberFormat('@'); // 列をテキスト書式に
+    rng.setValues(vals);
+  });
+  Logger.log('電話番号の先頭0を修正: ' + fixed + '件');
+  return fixed;
+}
+
 // --- パスワードハッシュ化 ---
 function hashPassword(pw) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pw);
