@@ -34,12 +34,23 @@ export default function Transfer() {
   const groupTotal = groupsThisMonth.reduce((s, g) => s + g.amount, 0);
   const missingCss = billing.filter(r => !String(members.find(m => m.id === r.memberId)?.cssNumber ?? '').trim());
 
-  const exportCss = () => {
-    const n = downloadCssExport(yearMonth, members, billing, groupsThisMonth);
+  // 出力時は画面の状態に依存せず、最新データを取り直してから生成する。
+  // （会員データの読み込み完了前に押されても空にならないようにするため）
+  const exportCss = async () => {
+    const [mems, bills, grps] = await Promise.all([
+      getAllMembers(), getBillingByMonth(yearMonth), getAllGroupBillings(),
+    ]);
+    const grpThis = grps.filter(g => (g.dueDate || '').slice(0, 7) === yearMonth && g.status !== 'completed' && g.status !== 'failed');
+    if (mems.length === 0 || bills.length === 0) {
+      setMsg('データを取得できませんでした。少し待ってから再度お試しください。');
+      return;
+    }
+    const n = downloadCssExport(yearMonth, mems, bills, grpThis);
     setMsg(`口座振替データ（CSS様式）を出力しました：${n}件（CSS番号ごと）`);
   };
-  const exportResult = () => {
-    downloadResultReport(yearMonth, billing);
+  const exportResult = async () => {
+    const bills = await getBillingByMonth(yearMonth);
+    downloadResultReport(yearMonth, bills);
     setMsg('振替結果帳票を出力しました');
   };
 
