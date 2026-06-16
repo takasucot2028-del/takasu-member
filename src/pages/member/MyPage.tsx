@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
 import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
-import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance, getMemberBilling } from '../../api/data';
+import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance, getMemberBilling, changePassword } from '../../api/data';
 import type { Member, BillingRecord } from '../../types';
 
 // 請求レコードの費目内訳（0でないもの）を「ラベル 金額円」の配列で返す
@@ -29,6 +29,11 @@ export default function MyPage() {
   const [form, setForm] = useState<Partial<Member>>({});
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [billing, setBilling] = useState<BillingRecord[]>([]);
+
+  // パスワード変更
+  const [pwForm, setPwForm] = useState({ old: '', next: '', confirm: '' });
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
 
   // 世帯の請求（振替予定・履歴）を取得
   useEffect(() => {
@@ -77,6 +82,22 @@ export default function MyPage() {
     await updateMemberData(id, { nextYearStatus: value as Member['nextYearStatus'] });
     setHousehold(members.map(x => (x.id === id ? { ...x, nextYearStatus: value as Member['nextYearStatus'] } : x)));
     setMsg({ type: 'success', text: '翌年度の意思を保存しました' });
+  };
+
+  const handleChangePassword = async () => {
+    setPwMsg(null);
+    if (pwForm.next.length < 6) { setPwMsg({ type: 'error', text: '新しいパスワードは6文字以上で入力してください' }); return; }
+    if (pwForm.next !== pwForm.confirm) { setPwMsg({ type: 'error', text: '新しいパスワード（確認）が一致しません' }); return; }
+    setPwSaving(true);
+    try {
+      await changePassword(pwForm.old, pwForm.next, members.map(m => m.id));
+      setPwForm({ old: '', next: '', confirm: '' });
+      setPwMsg({ type: 'success', text: 'パスワードを変更しました' });
+    } catch (e) {
+      setPwMsg({ type: 'error', text: e instanceof Error ? e.message : 'パスワードの変更に失敗しました' });
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   const handleWithdraw = async () => {
@@ -323,6 +344,34 @@ export default function MyPage() {
               </div>
             );
           })()}
+        </Card>
+
+        {/* パスワード変更 */}
+        <Card>
+          <h3 className="font-medium text-gray-700 text-sm mb-1">パスワードの変更</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            ログイン用パスワードを変更します。
+            {members.length > 1 && '（ご家族共通のログインのため、世帯全員に適用されます）'}
+          </p>
+          {pwMsg && <Alert type={pwMsg.type}>{pwMsg.text}</Alert>}
+          <div className="space-y-3 max-w-sm">
+            <Field label="現在のパスワード">
+              <Input type="password" value={pwForm.old} autoComplete="current-password"
+                onChange={e => setPwForm(p => ({ ...p, old: e.target.value }))} />
+            </Field>
+            <Field label="新しいパスワード（6文字以上）">
+              <Input type="password" value={pwForm.next} autoComplete="new-password"
+                onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))} />
+            </Field>
+            <Field label="新しいパスワード（確認）">
+              <Input type="password" value={pwForm.confirm} autoComplete="new-password"
+                onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))} />
+            </Field>
+            <Button size="sm" onClick={handleChangePassword}
+              disabled={pwSaving || !pwForm.old || !pwForm.next || !pwForm.confirm}>
+              {pwSaving ? '変更中…' : 'パスワードを変更'}
+            </Button>
+          </div>
         </Card>
 
         {/* 退会 */}

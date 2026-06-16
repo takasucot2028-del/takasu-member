@@ -270,7 +270,7 @@ function getSession(token) {
 var PUBLIC_ACTIONS = { login: true, adminLogin: true, registerMember: true };
 var SELF_OR_ADMIN_ACTIONS = { getMember: true, updateMember: true, withdrawMember: true };
 // 認証済みなら誰でも可（ハンドラ側でセッションの世帯に限定）
-var AUTHED_ACTIONS = { getMemberBilling: true };
+var AUTHED_ACTIONS = { getMemberBilling: true, changePassword: true };
 
 function enforceAuth(action, body) {
   if (PUBLIC_ACTIONS[action]) return;
@@ -355,6 +355,9 @@ function doPost(e) {
         break;
       case 'getMemberBilling':
         result = handleGetMemberBilling(body.token);
+        break;
+      case 'changePassword':
+        result = handleChangePassword(body.token, body.oldPassword, body.newPassword);
         break;
       case 'getBillingSchedule':
         result = handleGetBillingSchedule();
@@ -761,6 +764,37 @@ function handleReplaceMonthlyBilling(yearMonth, records) {
 }
 
 // 会員（保護者）が自分の世帯の請求を取得。セッションの memberIds に限定する。
+// 会員本人がパスワードを変更する。世帯（同一メール＋パスワードでログイン）の整合を保つため、
+// セッションの世帯全員のパスワードをまとめて更新する。現在のパスワード照合を必須とする。
+function handleChangePassword(token, oldPassword, newPassword) {
+  const session = getSession(token);
+  const ids = (session && session.memberIds) || [];
+  if (ids.length === 0) return { success: false, error: '認証が必要です。再度ログインしてください' };
+  if (!newPassword || String(newPassword).length < 6) {
+    return { success: false, error: 'パスワードは6文字以上で入力してください' };
+  }
+  const sheet = getSheet('members');
+  const data = sheet.getDataRange().getValues();
+  const idCol = colNum('members', 'id') - 1;
+  const hCol = colNum('members', 'passwordHash'); // 1始まり
+  const oldHash = hashPassword(String(oldPassword || ''));
+  const newHash = hashPassword(String(newPassword));
+
+  const targetRows = [];
+  let verified = false;
+  for (let i = 1; i < data.length; i++) {
+    if (ids.indexOf(data[i][idCol]) !== -1) {
+      targetRows.push(i + 1); // 1始まり
+      if (String(data[i][hCol - 1]) === oldHash) verified = true;
+    }
+  }
+  if (targetRows.length === 0) return { success: false, error: '会員が見つかりません' };
+  if (!verified) return { success: false, error: '現在のパスワードが正しくありません' };
+
+  targetRows.forEach(function (r) { sheet.getRange(r, hCol).setValue(newHash); });
+  return { success: true };
+}
+
 function handleGetMemberBilling(token) {
   const session = getSession(token);
   const ids = (session && session.memberIds) || [];

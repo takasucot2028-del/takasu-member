@@ -75,6 +75,14 @@ export function memberLogin(email: string, password: string): AuthResponse {
   return { success: true, token: matched[0].id, members: matched, member: matched[0], role: 'member' };
 }
 
+// 会員本人のパスワード変更（デモ）。世帯全員に適用。現在のパスワード照合必須。
+export function changePasswordLocal(memberIds: string[], oldPassword: string, newPassword: string): void {
+  if (!newPassword || newPassword.length < 6) throw new Error('パスワードは6文字以上で入力してください');
+  const ok = memberIds.some(id => JSON.parse(localStorage.getItem(`tsc_pw_${id}`) || '""') === oldPassword);
+  if (!ok) throw new Error('現在のパスワードが正しくありません');
+  memberIds.forEach(id => localStorage.setItem(`tsc_pw_${id}`, JSON.stringify(newPassword)));
+}
+
 export function adminLoginCheck(email: string, password: string): AuthResponse {
   const admin = JSON.parse(localStorage.getItem(ADMIN_KEY) || '{}');
   if (admin.email === email && admin.password === password) {

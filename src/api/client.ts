@@ -101,6 +101,10 @@ export const getFailedBillings = (token: string) =>
 export const getMemberBilling = (token: string) =>
   request<BillingRecord[]>('getMemberBilling', { token });
 
+// 会員本人がパスワードを変更（世帯全員にまとめて適用・現在のパスワード照合必須）
+export const changePassword = (token: string, oldPassword: string, newPassword: string) =>
+  request<void>('changePassword', { token, oldPassword, newPassword });
+
 // 請求スケジュール（教室ごとの請求月）
 export const getBillingSchedule = (token: string) =>
   request<Record<string, number[]>>('getBillingSchedule', { token });

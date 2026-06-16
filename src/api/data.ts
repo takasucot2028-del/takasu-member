@@ -159,6 +159,18 @@ export async function getMemberBilling(memberIds: string[]): Promise<BillingReco
   return unwrap(await gas.getMemberBilling(token()), []);
 }
 
+// 会員本人のパスワード変更。世帯全員に適用する。GAS はトークンから世帯を特定するため、
+// memberIds はデモモード（localStorage）でのみ使用する。
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+  memberIds: string[]
+): Promise<void> {
+  if (!USE_GAS) { local.changePasswordLocal(memberIds, oldPassword, newPassword); return; }
+  const res = await gas.changePassword(token(), oldPassword, newPassword);
+  if (!res.success) throw new Error(res.error || 'パスワードの変更に失敗しました');
+}
+
 // === 請求スケジュール（教室ごとの請求月） ===
 export async function getBillingSchedule(): Promise<BillingSchedule> {
   if (!USE_GAS) return local.getBillingScheduleLocal();
