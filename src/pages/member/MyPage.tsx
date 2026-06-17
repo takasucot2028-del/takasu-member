@@ -12,11 +12,17 @@ const FEE_LABELS: [keyof BillingRecord, string][] = [
   ['monthlyCommunity', '月会費(地域クラブ)'], ['insuranceFee', '保険料'], ['specialFee', '特別徴収'],
 ];
 function breakdown(r: BillingRecord): string[] {
-  const parts = FEE_LABELS
-    .filter(([k]) => (r[k] as number) > 0)
-    .map(([k, label]) => `${label} ${(r[k] as number).toLocaleString()}円`);
-  if (r.specialFee > 0 && r.specialNote) parts[parts.length - 1] += `（${r.specialNote}）`;
-  if (r.subsidy > 0) parts.push(`就学援助補助 -${r.subsidy.toLocaleString()}円`);
+  // 会員側では就学援助補助は表示しない（事務局のみ）。地域クラブ参加費は控除後の純額で見せる。
+  const parts: string[] = [];
+  for (const [k, label] of FEE_LABELS) {
+    let v = r[k] as number;
+    if (k === 'monthlyCommunity') v -= (r.subsidy || 0);
+    if (v > 0) {
+      let s = `${label} ${v.toLocaleString()}円`;
+      if (k === 'specialFee' && r.specialNote) s += `（${r.specialNote}）`;
+      parts.push(s);
+    }
+  }
   return parts;
 }
 function statusText(s: string): string {
