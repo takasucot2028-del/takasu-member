@@ -16,6 +16,7 @@ function breakdown(r: BillingRecord): string[] {
     .filter(([k]) => (r[k] as number) > 0)
     .map(([k, label]) => `${label} ${(r[k] as number).toLocaleString()}円`);
   if (r.specialFee > 0 && r.specialNote) parts[parts.length - 1] += `（${r.specialNote}）`;
+  if (r.subsidy > 0) parts.push(`就学援助補助 -${r.subsidy.toLocaleString()}円`);
   return parts;
 }
 function statusText(s: string): string {

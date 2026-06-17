@@ -130,7 +130,8 @@ export function buildCssRows(
     a.annual += r.annualFee || 0;
     a.sanka += (r.monthlyClassroom || 0) + (r.specialFee || 0);
     a.insurance += r.insuranceFee || 0;
-    a.community += r.monthlyCommunity || 0;
+    // 就学援助補助は地域クラブ参加費からの控除（毎月2,000円）。地域クラブ額から差し引く。
+    a.community += (r.monthlyCommunity || 0) - (r.subsidy || 0);
     a.consigned += r.monthlyConsigned || 0;
     if ((r.specialFee || 0) > 0 && r.specialNote) a.biko.push(r.specialNote);
   });
@@ -213,6 +214,7 @@ export function downloadResultReport(yearMonth: string, billing: BillingRecord[]
     '保険料': r.insuranceFee,
     '特別徴収': r.specialFee,
     '特別徴収備考': r.specialNote,
+    '就学援助補助': r.subsidy ? -r.subsidy : 0,
     '合計': r.total,
     '引落日': r.dueDate,
     '振替結果': BILLING_STATUS_LABELS[r.status] || r.status,

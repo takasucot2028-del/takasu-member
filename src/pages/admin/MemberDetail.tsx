@@ -131,6 +131,12 @@ export default function MemberDetail() {
                 <Field label="CSS番号（口座振替番号・家庭共通）">
                   <Input value={form.cssNumber || ''} onChange={e => set('cssNumber', e.target.value)} />
                 </Field>
+                {member.memberType !== 'group' && (
+                  <label className="flex items-center gap-2 text-sm py-1">
+                    <input type="checkbox" checked={!!form.schoolAidRecipient} onChange={e => set('schoolAidRecipient', e.target.checked)} />
+                    就学援助受給世帯（地域クラブ参加費から毎月2,000円控除）
+                  </label>
+                )}
                 {member.memberType !== 'general' && (
                   <>
                     <label className="flex items-center gap-2 text-sm py-1">
@@ -197,6 +203,9 @@ export default function MemberDetail() {
                   </>
                 )}
                 <Row label="CSS番号">{member.cssNumber || '—'}</Row>
+                {member.memberType !== 'group' && member.schoolAidRecipient && (
+                  <Row label="就学援助">受給世帯（地域クラブ参加費 -2,000円/月）</Row>
+                )}
                 {member.memberType !== 'general' && (
                   <Row label="保険加入">
                     {member.insuranceEnrolled

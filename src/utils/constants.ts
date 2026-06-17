@@ -84,6 +84,10 @@ export const ANNUAL_FEES = {
   group: 1000,
 };
 
+// 就学援助受給世帯への地域クラブ参加費支援補助金（鷹栖町）。
+// 対象会員は毎月払いの地域クラブ月会費から毎月この額を控除する（フロアは0）。
+export const SCHOOL_AID_MONTHLY_DISCOUNT = 2000;
+
 // 保険料
 export const INSURANCE_FEES = {
   general: 0,

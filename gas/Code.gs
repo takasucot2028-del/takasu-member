@@ -29,7 +29,7 @@ var SHEETS = {
     ['guardianPhone', '保護者電話'], ['guardianEmail', '保護者メール'],
     ['groupName', '団体名'], ['representativeName', '代表者氏名'], ['memberCount', '加入人数'],
     ['cssNumber', 'CSS番号'], ['insuranceEnrolled', '保険加入'], ['insuranceEnrolledAt', '保険加入日'],
-    ['nextYearStatus', '翌年度意思'], ['gender', '性別'],
+    ['nextYearStatus', '翌年度意思'], ['gender', '性別'], ['schoolAidRecipient', '就学援助受給'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -45,6 +45,7 @@ var SHEETS = {
     ['monthlyCommunity', '月会費(地域クラブ)'], ['insuranceFee', '保険料'],
     ['specialFee', '特別徴収'], ['specialNote', '特別徴収備考'],
     ['total', '合計'], ['status', '状態'], ['isRetry', '再請求'], ['carriedTo', '繰越先'],
+    ['subsidy', '就学援助補助'],
   ] },
   billing_group: { name: '団体請求', columns: [
     ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['groupName', '団体名'],
@@ -496,7 +497,7 @@ function handleRegister(data) {
     data.guardianPhone || '', data.guardianEmail || '',
     data.groupName || '', data.representativeName || '', data.memberCount || 0,
     data.cssNumber || '', data.insuranceEnrolled || false, data.insuranceEnrolledAt || '',
-    data.nextYearStatus || '', data.gender || '',
+    data.nextYearStatus || '', data.gender || '', data.schoolAidRecipient || false,
   ];
   sheet.appendRow(row);
 
@@ -537,7 +538,7 @@ function handleBulkRegister(members) {
       d.guardianPhone || '', d.guardianEmail || '',
       d.groupName || '', d.representativeName || '', d.memberCount || 0,
       d.cssNumber || '', d.insuranceEnrolled || false, d.insuranceEnrolledAt || '',
-      d.nextYearStatus || '', d.gender || '',
+      d.nextYearStatus || '', d.gender || '', d.schoolAidRecipient || false,
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });

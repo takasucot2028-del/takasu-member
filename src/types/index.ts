@@ -64,6 +64,7 @@ export interface Member {
   memberCount?: number;
   // 口座振替・保険・年度更新（事務局管理）
   cssNumber?: string;             // CSS番号（口座振替番号・家庭=兄弟で共通）
+  schoolAidRecipient?: boolean;   // 就学援助受給世帯（地域クラブ参加費から毎月2,000円控除）
   insuranceEnrolled?: boolean;    // スポーツ安全保険 加入フラグ
   insuranceEnrolledAt?: string;   // 保険加入日（YYYY-MM-DD）
   nextYearStatus?: NextYearStatus; // 翌年度の継続意思
@@ -89,6 +90,7 @@ export interface BillingRecord {
   insuranceFee: number;      // 保険料
   specialFee: number;        // 特別徴収
   specialNote: string;       // 特別徴収の備考
+  subsidy: number;           // 就学援助補助（地域クラブ参加費の控除額・正の数。total から差引く）
   total: number;
   status: BillingStatus;
   isRetry: boolean;          // 引落不能の繰越（再請求）を含む

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PageContainer, Card, Button, Table, Th, Td, Badge, Modal, Field, Input, Select, Alert } from '../../components/UI';
-import { COURSES, BILLING_STATUS_LABELS } from '../../utils/constants';
+import { COURSES, BILLING_STATUS_LABELS, SCHOOL_AID_MONTHLY_DISCOUNT } from '../../utils/constants';
 import {
   getAllMembers, getBillingByMonth, saveBillingRecords, replaceMonthlyBilling,
   updateBillingStatus, calcAnnualFee, calcInsurance,
@@ -86,13 +86,13 @@ export default function Billing() {
       return month === 4 ? (!!at && at < `${year}-04-01`) : (monthAfter(at) === yearMonth);
     };
 
-    const build = (m: { id: string; memberNumber: string; memberName: string }, f: Fees, isRetry: boolean): BillingRecord => ({
+    const build = (m: { id: string; memberNumber: string; memberName: string }, f: Fees, subsidy: number, isRetry: boolean): BillingRecord => ({
       id: `${yearMonth}-${m.id}`,
       memberId: m.id, memberNumber: m.memberNumber, memberName: m.memberName,
       yearMonth, dueDate: due,
       annualFee: f.annualFee, monthlyClassroom: f.monthlyClassroom, monthlyConsigned: f.monthlyConsigned,
       monthlyCommunity: f.monthlyCommunity, insuranceFee: f.insuranceFee, specialFee: f.specialFee,
-      specialNote: '', total: sumFees(f), status: 'pending', isRetry, carriedTo: '',
+      specialNote: '', subsidy, total: sumFees(f) - subsidy, status: 'pending', isRetry, carriedTo: '',
     });
 
     const recMap: Record<string, BillingRecord> = {};
@@ -117,8 +117,13 @@ export default function Billing() {
       if (annualDue(m)) f.annualFee = calcAnnualFee(m.memberType, m.areaType);
       if (insuranceDue(m)) f.insuranceFee = calcInsurance(m.memberType, m.memberCount);
 
+      // 就学援助受給世帯は毎月払いの地域クラブ参加費から2,000円控除（フロア0）
+      const subsidy = (m.schoolAidRecipient && f.monthlyCommunity > 0)
+        ? Math.min(SCHOOL_AID_MONTHLY_DISCOUNT, f.monthlyCommunity)
+        : 0;
+
       if (sumFees(f) > 0) {
-        recMap[m.id] = build({ id: m.id, memberNumber: m.memberNumber, memberName: `${m.lastName} ${m.firstName}` }, f, false);
+        recMap[m.id] = build({ id: m.id, memberNumber: m.memberNumber, memberName: `${m.lastName} ${m.firstName}` }, f, subsidy, false);
       }
     });
 
@@ -127,7 +132,7 @@ export default function Billing() {
     carry.forEach(cf => {
       let rec = recMap[cf.memberId];
       if (!rec) {
-        rec = build({ id: cf.memberId, memberNumber: cf.memberNumber, memberName: cf.memberName }, emptyFees(), true);
+        rec = build({ id: cf.memberId, memberNumber: cf.memberNumber, memberName: cf.memberName }, emptyFees(), 0, true);
         recMap[cf.memberId] = rec;
       }
       rec.annualFee += cf.annualFee || 0;
@@ -136,9 +141,10 @@ export default function Billing() {
       rec.monthlyCommunity += cf.monthlyCommunity || 0;
       rec.insuranceFee += cf.insuranceFee || 0;
       rec.specialFee += cf.specialFee || 0;
+      rec.subsidy = (rec.subsidy || 0) + (cf.subsidy || 0); // 控除も繰越（同費目で再請求）
       if (cf.specialNote && !rec.specialNote) rec.specialNote = cf.specialNote;
       rec.isRetry = true;
-      rec.total = rec.annualFee + rec.monthlyClassroom + rec.monthlyConsigned + rec.monthlyCommunity + rec.insuranceFee + rec.specialFee;
+      rec.total = rec.annualFee + rec.monthlyClassroom + rec.monthlyConsigned + rec.monthlyCommunity + rec.insuranceFee + rec.specialFee - rec.subsidy;
     });
 
     const newRecords = Object.values(recMap);
@@ -176,7 +182,7 @@ export default function Billing() {
       memberName, yearMonth,
       dueDate: spDue || existing?.dueDate || `${yearMonth}-27`,
       annualFee: 0, monthlyClassroom: 0, monthlyConsigned: 0, monthlyCommunity: 0, insuranceFee: 0,
-      specialFee: prevAmount + amount, specialNote: spNote,
+      specialFee: prevAmount + amount, specialNote: spNote, subsidy: 0,
       total: prevAmount + amount, status: 'pending', isRetry: false, carriedTo: '',
     };
     await saveBillingRecords([rec]);
@@ -207,7 +213,7 @@ export default function Billing() {
       '会員番号': r.memberNumber, '氏名': r.memberName,
       '年会費': r.annualFee, '月会費(教室)': r.monthlyClassroom, '月会費(委託)': r.monthlyConsigned,
       '月会費(地域クラブ)': r.monthlyCommunity, '保険料': r.insuranceFee,
-      '特別徴収': r.specialFee, '特別徴収備考': r.specialNote,
+      '特別徴収': r.specialFee, '特別徴収備考': r.specialNote, '就学援助補助': r.subsidy ? -r.subsidy : 0,
       '合計': r.total, '引落日': r.dueDate, '状態': BILLING_STATUS_LABELS[r.status], '再請求': r.isRetry ? '○' : '',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -260,6 +266,7 @@ export default function Billing() {
                 <Th className="text-right hidden md:table-cell">月会費(地域)</Th>
                 <Th className="text-right hidden sm:table-cell">保険料</Th>
                 <Th className="text-right hidden sm:table-cell">特別徴収</Th>
+                <Th className="text-right hidden lg:table-cell">就学援助補助</Th>
                 <Th className="text-right">合計</Th>
                 <Th>状態</Th>
                 <Th></Th>
@@ -279,6 +286,7 @@ export default function Billing() {
                   <Td className="text-right text-xs hidden md:table-cell">{cell(r.monthlyCommunity)}</Td>
                   <Td className="text-right text-xs hidden sm:table-cell">{cell(r.insuranceFee)}</Td>
                   <Td className="text-right text-xs hidden sm:table-cell" title={r.specialNote}>{cell(r.specialFee)}</Td>
+                  <Td className="text-right text-xs hidden lg:table-cell text-blue-600">{r.subsidy ? `-${r.subsidy.toLocaleString()}` : '-'}</Td>
                   <Td className="text-right font-medium">{r.total.toLocaleString()}</Td>
                   <Td>
                     <Badge color={statusColor(r.status) as 'gray' | 'green' | 'red' | 'blue' | 'yellow'}>
@@ -304,7 +312,7 @@ export default function Billing() {
                 </tr>
               ))}
               {records.length === 0 && (
-                <tr><Td className="text-center text-gray-400 py-8" colSpan={11}>継続会費データがありません。「請求データ生成」をクリックしてください</Td></tr>
+                <tr><Td className="text-center text-gray-400 py-8" colSpan={12}>継続会費データがありません。「請求データ生成」をクリックしてください</Td></tr>
               )}
             </tbody>
           </Table>
