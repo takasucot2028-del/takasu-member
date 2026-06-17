@@ -64,6 +64,7 @@ export interface Member {
   memberCount?: number;
   // 口座振替・保険・年度更新（事務局管理）
   cssNumber?: string;             // CSS番号（口座振替番号・家庭=兄弟で共通）
+  cssNumberCommunity?: string;    // 地域クラブ参加費を別口座から引落す場合のCSS番号（未設定なら cssNumber）
   schoolAidRecipient?: boolean;   // 就学援助受給世帯（地域クラブ参加費から毎月2,000円控除）
   insuranceEnrolled?: boolean;    // スポーツ安全保険 加入フラグ
   insuranceEnrolledAt?: string;   // 保険加入日（YYYY-MM-DD）

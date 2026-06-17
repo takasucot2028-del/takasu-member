@@ -132,6 +132,11 @@ export default function MemberDetail() {
                   <Input value={form.cssNumber || ''} onChange={e => set('cssNumber', e.target.value)} />
                 </Field>
                 {member.memberType !== 'group' && (
+                  <Field label="地域クラブ用CSS番号（任意・地域クラブ参加費を別口座から引落す場合）">
+                    <Input value={form.cssNumberCommunity || ''} onChange={e => set('cssNumberCommunity', e.target.value)} />
+                  </Field>
+                )}
+                {member.memberType !== 'group' && (
                   <label className="flex items-center gap-2 text-sm py-1">
                     <input type="checkbox" checked={!!form.schoolAidRecipient} onChange={e => set('schoolAidRecipient', e.target.checked)} />
                     就学援助受給世帯（地域クラブ参加費から毎月2,000円控除）
@@ -203,6 +208,7 @@ export default function MemberDetail() {
                   </>
                 )}
                 <Row label="CSS番号">{member.cssNumber || '—'}</Row>
+                {member.cssNumberCommunity && <Row label="地域クラブ用CSS">{member.cssNumberCommunity}</Row>}
                 {member.memberType !== 'group' && member.schoolAidRecipient && (
                   <Row label="就学援助">受給世帯（地域クラブ参加費 -2,000円/月）</Row>
                 )}

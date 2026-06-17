@@ -115,25 +115,42 @@ export function buildCssRows(
     return map[code];
   };
 
+  // 会員の情報を集計先（家庭）に紐づける
+  const attach = (a: Agg, m?: Member) => {
+    if (!m) return;
+    a.memberIds.add(m.id);
+    if (!a.postal) { a.postal = m.postalCode || ''; a.address = m.address || ''; a.email = m.email || ''; a.phone = m.phone || ''; }
+  };
+
   // 継続会費（当月分・特別徴収-adj-含む）
   billing.forEach(r => {
     const m = byId[r.memberId];
-    const code = String(m?.cssNumber ?? '').trim();
-    // CSS番号が無い会員は口座振替できないため出力に含めない（画面の警告で別途一覧表示）。
-    // 含めると全員が「空コードの1行」に合算され、正しく振替できなくなる。
-    if (!code) return;
-    const a = aggFor(code);
-    if (m) {
-      a.memberIds.add(m.id);
-      if (!a.postal) { a.postal = m.postalCode || ''; a.address = m.address || ''; a.email = m.email || ''; a.phone = m.phone || ''; }
-    }
-    a.annual += r.annualFee || 0;
-    a.sanka += (r.monthlyClassroom || 0) + (r.specialFee || 0);
-    a.insurance += r.insuranceFee || 0;
+    const primary = String(m?.cssNumber ?? '').trim();
+    // 地域クラブ参加費の引落口座。専用CSSが未設定なら主CSSを使う。
+    const communityCss = String(m?.cssNumberCommunity ?? '').trim() || primary;
     // 就学援助補助は地域クラブ参加費からの控除（毎月2,000円）。地域クラブ額から差し引く。
-    a.community += (r.monthlyCommunity || 0) - (r.subsidy || 0);
-    a.consigned += r.monthlyConsigned || 0;
-    if ((r.specialFee || 0) > 0 && r.specialNote) a.biko.push(r.specialNote);
+    const communityNet = (r.monthlyCommunity || 0) - (r.subsidy || 0);
+    const annual = r.annualFee || 0;
+    const sanka = (r.monthlyClassroom || 0) + (r.specialFee || 0);
+    const insurance = r.insuranceFee || 0;
+    const consigned = r.monthlyConsigned || 0;
+
+    // 地域クラブ以外の費目 → 主CSS番号
+    if (primary && (annual + sanka + insurance + consigned) > 0) {
+      const a = aggFor(primary);
+      attach(a, m);
+      a.annual += annual;
+      a.sanka += sanka;
+      a.insurance += insurance;
+      a.consigned += consigned;
+      if ((r.specialFee || 0) > 0 && r.specialNote) a.biko.push(r.specialNote);
+    }
+    // 地域クラブ参加費（純額）→ 地域クラブ用CSS番号（未設定なら主CSS）
+    if (communityCss && communityNet > 0) {
+      const a = aggFor(communityCss);
+      attach(a, m);
+      a.community += communityNet;
+    }
   });
 
   // 当月に引き落とす団体請求（引落日が対象年月）

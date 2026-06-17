@@ -32,7 +32,16 @@ export default function Transfer() {
   const groupsThisMonth = groups.filter(g => (g.dueDate || '').slice(0, 7) === yearMonth && g.status !== 'completed' && g.status !== 'failed');
   const billingTotal = billing.reduce((s, r) => s + r.total, 0);
   const groupTotal = groupsThisMonth.reduce((s, g) => s + g.amount, 0);
-  const missingCss = billing.filter(r => !String(members.find(m => m.id === r.memberId)?.cssNumber ?? '').trim());
+  // CSS番号未設定で引落できない費目がある会員を抽出。
+  // 地域クラブ参加費は地域クラブ用CSS（未設定なら主CSS）、それ以外は主CSSが必要。
+  const missingCss = billing.filter(r => {
+    const m = members.find(x => x.id === r.memberId);
+    const primary = String(m?.cssNumber ?? '').trim();
+    const communityCss = String(m?.cssNumberCommunity ?? '').trim() || primary;
+    const communityNet = (r.monthlyCommunity || 0) - (r.subsidy || 0);
+    const nonCommunity = (r.annualFee || 0) + (r.monthlyClassroom || 0) + (r.monthlyConsigned || 0) + (r.insuranceFee || 0) + (r.specialFee || 0);
+    return (nonCommunity > 0 && !primary) || (communityNet > 0 && !communityCss);
+  });
 
   // 出力時は画面の状態に依存せず、最新データを取り直してから生成する。
   // （会員データの読み込み完了前に押されても空にならないようにするため）
@@ -153,12 +162,16 @@ export default function Transfer() {
             </thead>
             <tbody>
               {billing.map(r => {
-                const css = String(members.find(m => m.id === r.memberId)?.cssNumber ?? '');
+                const mem = members.find(m => m.id === r.memberId);
+                const css = String(mem?.cssNumber ?? '');
+                const cssCommunity = String(mem?.cssNumberCommunity ?? '');
                 return (
                   <tr key={r.id}>
                     <Td className="font-mono text-xs">{r.memberNumber}</Td>
                     <Td className="text-sm">{r.memberName}{r.isRetry && <Badge color="yellow" className="ml-1">再請求</Badge>}</Td>
-                    <Td className={`font-mono text-xs ${css ? '' : 'text-red-500'}`}>{css || '未設定'}</Td>
+                    <Td className={`font-mono text-xs ${css ? '' : 'text-red-500'}`}>
+                      {css || '未設定'}{cssCommunity && <span className="text-gray-500">／地域:{cssCommunity}</span>}
+                    </Td>
                     <Td className="text-right">{r.total.toLocaleString()}円</Td>
                     <Td><Badge>{BILLING_STATUS_LABELS[r.status]}</Badge></Td>
                   </tr>

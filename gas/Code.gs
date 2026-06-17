@@ -30,6 +30,7 @@ var SHEETS = {
     ['groupName', '団体名'], ['representativeName', '代表者氏名'], ['memberCount', '加入人数'],
     ['cssNumber', 'CSS番号'], ['insuranceEnrolled', '保険加入'], ['insuranceEnrolledAt', '保険加入日'],
     ['nextYearStatus', '翌年度意思'], ['gender', '性別'], ['schoolAidRecipient', '就学援助受給'],
+    ['cssNumberCommunity', '地域クラブ用CSS番号'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -498,6 +499,7 @@ function handleRegister(data) {
     data.groupName || '', data.representativeName || '', data.memberCount || 0,
     data.cssNumber || '', data.insuranceEnrolled || false, data.insuranceEnrolledAt || '',
     data.nextYearStatus || '', data.gender || '', data.schoolAidRecipient || false,
+    data.cssNumberCommunity || '',
   ];
   sheet.appendRow(row);
 
@@ -539,6 +541,7 @@ function handleBulkRegister(members) {
       d.groupName || '', d.representativeName || '', d.memberCount || 0,
       d.cssNumber || '', d.insuranceEnrolled || false, d.insuranceEnrolledAt || '',
       d.nextYearStatus || '', d.gender || '', d.schoolAidRecipient || false,
+      d.cssNumberCommunity || '',
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });
