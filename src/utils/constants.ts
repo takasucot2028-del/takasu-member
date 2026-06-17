@@ -15,7 +15,7 @@ export const COURSES: Course[] = [
   { id: 'c08', name: '鷹栖バレーボールクラブ', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c09', name: '鷹栖ソフトテニスクラブ', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c10', name: '鷹栖剣道クラブ', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
-  { id: 'c11', name: 'NexusBC', paymentMethod: 'monthly', category: 'community', feeInTown: 7000, feeOutOfTown: 9000, note: '毎月払い' },
+  { id: 'c11', name: 'NexusBC', paymentMethod: 'none', category: 'community', feeInTown: 7000, feeOutOfTown: 9000, note: '団体口座で一括徴収（団体請求）・個人徴収なし' },
   { id: 'c12', name: 'TakasuXC', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c13', name: 'マルチスポーツクラブ', paymentMethod: 'monthly', category: 'community', feeInTown: 1000, feeOutOfTown: 2000, note: '毎月払い' },
   { id: 'c22', name: '鷹栖剣道少年団', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
