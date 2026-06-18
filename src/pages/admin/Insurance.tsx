@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Alert } from '../../components/UI';
 import { MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { calcAgeAtDate } from '../../utils/age';
 import { getAllMembers, calcInsurance, bulkUpdateInsurance } from '../../api/data';
 import {
   downloadInsuranceTemplate, parseInsuranceWorkbook, type InsuranceUpdate,
@@ -41,16 +42,44 @@ export default function Insurance() {
     return `${d.getFullYear()}年${d.getMonth() + 1}月`;
   })();
 
+  // スポーツ安全保険ネット（スポあんネット）貼り付け用様式で出力する。
+  // 個人加入様式（姓名・性別・年齢を1行ずつ記入）のため、団体会員は除外する。
+  // 年齢は「加入日（補償開始日）時点の満年齢」、性別は全角「男/女」（未設定は空欄）。
   const exportExcel = () => {
-    const rows = newEnrollees.map(m => ({
-      '会員番号': m.memberNumber,
-      '氏名': m.memberType === 'group' ? m.groupName : `${m.lastName} ${m.firstName}`,
-      '種別': MEMBER_TYPE_LABELS[m.memberType],
-      '区分': m.areaType === 'in_town' ? '町内' : '町外',
-      '保険加入日': m.insuranceEnrolledAt || '',
-      '保険料': calcInsurance(m.memberType, m.memberCount),
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const indiv = newEnrollees.filter(m => m.memberType !== 'group');
+    const genderLabel = (g?: string) => (g === 'male' ? '男' : g === 'female' ? '女' : '');
+    const ymd = (s: string) => (s ? s.replace(/-/g, '/') : '');
+
+    const NOTE1 = '【表作成時のご注意】\n①赤枠内に情報を入力してください。（翌月一括追加方式での追加の場合は青枠内の入力も必要です。）\n②加入区分ごとに表を作成してください。（加入区分を混在させるとエラーとなります。）\n③姓、名は漢字で入力してください。外国籍の方は「全角アルファベット」または読みを「全角カナ」で入力してください。（文字数に制限があります。）';
+    const NOTE2 = '【作成した表のスポあんネットへの貼り付け方法】\n①赤枠内（翌月一括追加方式の追加の場合は青枠も含める。）の団体員が入力されている最終行までをコピーし、貼り付けてください。';
+    const HEAD = [
+      '',
+      '姓（全角10文字）+スペース+名（全角10文字）\n※必ず姓名の間にスペース（全角でも半角でも可）を入力してください。',
+      '性別\n（全角 男or女）',
+      '年齢\n（半角数字）',
+      '入会日\n（YYYY/MM/DD）\n※翌月一括追加方式での追加加入のみ',
+    ];
+
+    const aoa: (string | number)[][] = [
+      [NOTE1, '', '', '', ''],
+      [NOTE2, '', '', '', ''],
+      ['', '', '', '', ''],
+      HEAD,
+      ['例', '山田　太郎', '男', 12, '2022/04/01'],
+    ];
+    indiv.forEach((m, i) => {
+      const age = calcAgeAtDate(m.birthDate, m.insuranceEnrolledAt || '');
+      aoa.push([
+        i + 1,
+        `${m.lastName} ${m.firstName}`.trim(),
+        genderLabel(m.gender),
+        age === null ? '' : age,
+        ymd(m.insuranceEnrolledAt || ''),
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '新規保険加入者');
     XLSX.writeFile(wb, `新規保険加入者_${yearMonth}.xlsx`);

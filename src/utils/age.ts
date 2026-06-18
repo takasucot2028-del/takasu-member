@@ -32,3 +32,16 @@ export function fiscalAgeLabel(birthDate: string, today: Date = new Date()): str
   const a = calcFiscalAge(birthDate, today);
   return a === null ? '' : `${a}歳`;
 }
+
+// 生年月日（YYYY-MM-DD）の、指定日（YYYY-MM-DD）時点の満年齢を返す。
+// 保険の補償開始日（加入日）時点の年齢など、任意の基準日で計算したい場合に使う。
+// いずれかが空・不正、または基準日が生まれる前なら null。
+export function calcAgeAtDate(birthDate: string, atDate: string): number | null {
+  const b = parseYmd(birthDate);
+  const a = parseYmd(atDate);
+  if (!b || !a) return null;
+  let age = a.y - b.y;
+  const beforeBirthday = a.m < b.m || (a.m === b.m && a.d < b.d);
+  if (beforeBirthday) age -= 1;
+  return age < 0 ? null : age;
+}
