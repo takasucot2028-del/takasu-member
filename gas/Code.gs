@@ -625,7 +625,62 @@ function handleRegister(data) {
   ];
   sheet.appendRow(row);
 
+  notifyAdminNewMember_({ memberNumber: memberNumber, data: data, registeredAt: now });
+
   return { success: true, data: { id, memberNumber, ...data, registeredAt: now } };
+}
+
+// 新規入会を事務局（Script Properties の ADMIN_EMAIL）へメール通知する。
+// 送信失敗で登録自体は止めない（try/catch で握りつぶす）。
+function notifyAdminNewMember_(info) {
+  try {
+    const to = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL');
+    if (!to) { Logger.log('ADMIN_EMAIL 未設定のため新規入会通知をスキップしました'); return; }
+    if (MailApp.getRemainingDailyQuota() <= 0) { Logger.log('本日の送信上限のため新規入会通知をスキップしました'); return; }
+
+    const d = info.data;
+    const typeLabel = { general: '一般会員', junior: 'ジュニア会員', group: '団体会員' }[d.memberType] || d.memberType;
+    const name = d.memberType === 'group'
+      ? (d.groupName || '') + '（代表: ' + (d.representativeName || '') + '）'
+      : (d.lastName || '') + ' ' + (d.firstName || '');
+
+    MailApp.sendEmail({
+      to: to,
+      subject: '【新規入会】' + name + '（' + info.memberNumber + '）',
+      body: [
+        '新しい会員登録がありました。',
+        '',
+        '会員番号: ' + info.memberNumber,
+        '氏名: ' + name,
+        '会員種別: ' + typeLabel,
+        '電話: ' + (d.phone || ''),
+        'メール: ' + (d.email || ''),
+        '登録日: ' + info.registeredAt,
+        '',
+        '※このメールは自動送信です。会員管理システムでご確認ください。',
+      ].join('\n'),
+      name: CLUB_NAME,
+    });
+  } catch (e) {
+    Logger.log('新規入会通知メールの送信に失敗: ' + e);
+  }
+}
+
+// テスト用: 架空データで事務局通知メールだけを送る（会員レコードは作らない）。
+// GASエディタで本関数を選んで実行し、ADMIN_EMAIL にメールが届くか確認する。
+function testNotifyAdminNewMember() {
+  var to = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL');
+  Logger.log('送信先 ADMIN_EMAIL: ' + (to || '(未設定)'));
+  Logger.log('本日の残り送信可能数: ' + MailApp.getRemainingDailyQuota());
+  notifyAdminNewMember_({
+    memberNumber: 'TSC-TEST',
+    data: {
+      memberType: 'general', lastName: 'テスト', firstName: '太郎',
+      phone: '090-0000-0000', email: 'test@example.com',
+    },
+    registeredAt: new Date().toISOString().slice(0, 10),
+  });
+  Logger.log('testNotifyAdminNewMember 実行完了。受信トレイを確認してください。');
 }
 
 // 会員を一括登録（既存データ移行用・管理者専用）。
