@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
 import { COURSES, MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
+import { calcFiscalAge, currentFiscalYear } from '../../utils/age';
 import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance } from '../../api/data';
 import type { Member } from '../../types';
 
@@ -186,6 +187,12 @@ export default function MemberDetail() {
               <div className="space-y-2 text-sm">
                 <Row label="氏名">{member.lastName} {member.firstName}（{member.lastNameKana} {member.firstNameKana}）</Row>
                 <Row label="生年月日">{member.birthDate}</Row>
+                {member.memberType !== 'group' && calcFiscalAge(member.birthDate) !== null && (
+                  <Row label="年齢">
+                    {calcFiscalAge(member.birthDate)}歳
+                    <span className="text-gray-400 text-xs ml-1">（{currentFiscalYear()}年度・4月1日時点）</span>
+                  </Row>
+                )}
                 {member.memberType !== 'group' && <Row label="性別">{GENDER_LABELS[member.gender || ''] || '未設定'}</Row>}
                 <Row label="住所">{member.address}</Row>
                 <Row label="区分">{member.areaType === 'in_town' ? '町内' : '町外'}</Row>

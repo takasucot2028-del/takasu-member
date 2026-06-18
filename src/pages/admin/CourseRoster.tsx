@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PageContainer, Card, Select, Button, Table, Th, Td, Badge } from '../../components/UI';
 import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { calcFiscalAge } from '../../utils/age';
 import { getMembersByCourse } from '../../api/data';
 import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
@@ -26,6 +27,7 @@ export default function CourseRoster() {
       '氏名': `${m.lastName} ${m.firstName}`,
       'フリガナ': `${m.lastNameKana} ${m.firstNameKana}`,
       '区分': m.areaType === 'in_town' ? '町内' : '町外',
+      '年齢': calcFiscalAge(m.birthDate) ?? '',
       '電話': m.phone,
       'メール': m.email,
       ...(m.memberType === 'junior' ? {
@@ -69,6 +71,7 @@ export default function CourseRoster() {
                   <Th>種別</Th>
                   <Th>氏名</Th>
                   <Th className="hidden sm:table-cell">区分</Th>
+                  <Th className="hidden sm:table-cell">年齢</Th>
                   <Th className="hidden sm:table-cell">電話</Th>
                 </tr>
               </thead>
@@ -80,11 +83,12 @@ export default function CourseRoster() {
                     <Td><Badge>{MEMBER_TYPE_LABELS[m.memberType]}</Badge></Td>
                     <Td className="font-medium">{m.lastName} {m.firstName}</Td>
                     <Td className="hidden sm:table-cell">{m.areaType === 'in_town' ? '町内' : '町外'}</Td>
+                    <Td className="hidden sm:table-cell text-xs">{calcFiscalAge(m.birthDate) !== null ? `${calcFiscalAge(m.birthDate)}歳` : '—'}</Td>
                     <Td className="hidden sm:table-cell text-xs">{m.phone}</Td>
                   </tr>
                 ))}
                 {members.length === 0 && (
-                  <tr><Td className="text-center text-gray-400 py-8" colSpan={6}>参加者がいません</Td></tr>
+                  <tr><Td className="text-center text-gray-400 py-8" colSpan={7}>参加者がいません</Td></tr>
                 )}
               </tbody>
             </Table>
