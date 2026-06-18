@@ -250,6 +250,128 @@ function fixPasswordLeadingZero() {
   return fixed;
 }
 
+// ============================================================
+// ログイン情報の周知メール（マスキング送信）
+// 会員が「どのメール・電話で登録したか（父?母?）」を思い出せるよう、
+// 登録メール宛に、メール=最初2文字+ドメイン頭、電話=下4桁 のヒントを送る。
+// 完全な値は本文に載せないため、傍受・転送されても認証情報は漏れない。
+// ============================================================
+var LOGIN_URL = 'https://takasucot2028-del.github.io/takasu-member/';
+var CLUB_NAME = '一般社団法人たかすスポーツクラブ';
+
+function maskEmail_(e) {
+  e = String(e || '').trim();
+  var at = e.indexOf('@');
+  if (at < 1) return '●●●';
+  var local = e.slice(0, at), domain = e.slice(at + 1);
+  var lo = local.slice(0, 2) + '●●●';
+  var dom = (domain.charAt(0) || '●') + '●●';
+  return lo + '@' + dom;
+}
+function maskPhone_(p) {
+  var d = String(p || '').replace(/[^0-9]/g, '');
+  if (d.length < 4) return '●●●●';
+  return '●●●●-●●●●-' + d.slice(-4);
+}
+
+// 登録メール＋電話の両方がある会員を、メール（世帯）ごとにまとめる
+function buildLoginHouseholds_() {
+  var sheet = getSheet('members');
+  var members = sheetToObjects(sheet, 'members');
+  var byEmail = {};
+  members.forEach(function (m) {
+    if (m.isWithdrawn) return;
+    var email = String(m.email || '').trim();
+    var phone = String(m.phone || '').replace(/[^0-9]/g, '');
+    if (!email || !phone) return; // 両方そろっている会員のみ
+    var key = email.toLowerCase();
+    if (!byEmail[key]) byEmail[key] = { email: email, phone: phone, names: [] };
+    if (!byEmail[key].phone && phone) byEmail[key].phone = phone;
+    var nm = m.memberType === 'group' ? (m.groupName || '') : ((m.lastName || '') + ' ' + (m.firstName || ''));
+    byEmail[key].names.push(nm.trim());
+  });
+  return Object.keys(byEmail).map(function (k) { return byEmail[k]; });
+}
+
+function loginMailBody_(h) {
+  var names = h.names.filter(Boolean).map(function (n) { return '　・' + n; }).join('\n');
+  return [
+    'いつもお世話になっております。',
+    '会員管理システムのログイン情報をお知らせします（安全のため一部を伏せています）。',
+    '',
+    '■ ログインID（メールアドレス）',
+    '　' + maskEmail_(h.email) + '（＝このメールが届いたアドレスです）',
+    '',
+    '■ パスワード（ご登録の電話番号）',
+    '　' + maskPhone_(h.phone) + '（下4桁）',
+    '　※ハイフンなし・先頭の0を含む、下4桁が一致するご家族の電話番号です。',
+    '',
+    '■ ログインすると表示される会員',
+    names || '　（情報なし）',
+    '',
+    'ログイン → ' + LOGIN_URL,
+    '初回ログイン後、マイページ下部からパスワードの変更をお願いします。',
+    '',
+    CLUB_NAME,
+  ].join('\n');
+}
+
+// テスト送信: 1件だけ自分（管理者）宛に見本を送る。本番会員には送らない。
+// 送信先は Script Properties の TEST_EMAIL、無ければ ADMIN_EMAIL。
+function sendLoginInfoTest() {
+  var props = PropertiesService.getScriptProperties();
+  var to = props.getProperty('TEST_EMAIL') || props.getProperty('ADMIN_EMAIL');
+  if (!to) { Logger.log('Script Properties に TEST_EMAIL（または ADMIN_EMAIL）を設定してください'); return; }
+  var hs = buildLoginHouseholds_();
+  Logger.log('送信対象（メール＋電話あり世帯）: ' + hs.length + '件');
+  if (hs.length === 0) { Logger.log('対象がありません'); return; }
+  var sample = hs[0];
+  MailApp.sendEmail({
+    to: to,
+    subject: '【たかすスポーツクラブ】ログイン情報のご確認（テスト見本）',
+    body: '※これはテスト見本です。実際の会員には送信していません。\n\n' + loginMailBody_(sample),
+    name: CLUB_NAME,
+  });
+  Logger.log('テスト見本を ' + to + ' へ送信しました。残り送信可能数: ' + MailApp.getRemainingDailyQuota());
+}
+
+// 本番送信: 未送信の世帯へ送る。1回あたり最大 limit 件（既定80）。
+// 送信済みは「ログイン案内ログ」シートで管理し、再実行で重複送信しない。
+function sendLoginInfoBatch(limit) {
+  limit = limit || 80;
+  var ss = SpreadsheetApp.openById(getSpreadsheetId());
+  var log = ss.getSheetByName('ログイン案内ログ');
+  if (!log) {
+    log = ss.insertSheet('ログイン案内ログ');
+    log.getRange(1, 1, 1, 3).setValues([['メールアドレス', '送信日時', '宛先会員']]);
+    log.setFrozenRows(1);
+  }
+  var sent = {};
+  var lv = log.getDataRange().getValues();
+  for (var i = 1; i < lv.length; i++) { var e = String(lv[i][0] || '').trim().toLowerCase(); if (e) sent[e] = true; }
+
+  var hs = buildLoginHouseholds_();
+  var rows = [];
+  var count = 0;
+  for (var j = 0; j < hs.length; j++) {
+    if (count >= limit) break;
+    if (MailApp.getRemainingDailyQuota() <= 0) { Logger.log('本日の送信上限に達しました'); break; }
+    var h = hs[j];
+    if (sent[h.email.toLowerCase()]) continue;
+    MailApp.sendEmail({
+      to: h.email,
+      subject: '【たかすスポーツクラブ】会員システム ログイン情報のご確認',
+      body: loginMailBody_(h),
+      name: CLUB_NAME,
+    });
+    rows.push([h.email, new Date(), h.names.filter(Boolean).join('・')]);
+    count++;
+  }
+  if (rows.length) log.getRange(log.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
+  var remaining = hs.filter(function (h) { return !sent[h.email.toLowerCase()]; }).length - count;
+  Logger.log('送信: ' + count + '件 / 未送信の残り: ' + remaining + '件 / 本日の残り送信可能数: ' + MailApp.getRemainingDailyQuota());
+}
+
 // --- パスワードハッシュ化 ---
 function hashPassword(pw) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pw);
