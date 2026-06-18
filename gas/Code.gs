@@ -455,7 +455,7 @@ function doPost(e) {
         result = handleGetMember(body.memberId);
         break;
       case 'updateMember':
-        result = handleUpdateMember(body.memberId, body.data);
+        result = handleUpdateMember(body.memberId, body.data, getSession(body.token));
         break;
       case 'withdrawMember':
         result = handleWithdraw(body.memberId);
@@ -683,6 +683,70 @@ function testNotifyAdminNewMember() {
   Logger.log('testNotifyAdminNewMember 実行完了。受信トレイを確認してください。');
 }
 
+// 教室ID→名称（教室変更の通知メール用。フロントの src/utils/constants.ts の COURSES と一致させる）
+var COURSE_NAMES = {
+  c01: 'スポーツやってみ隊', c02: '運動遊び隊', c03: '小学生水泳教室', c25: '水泳教室（大人）',
+  c04: '幼児水泳教室', c05: 'ダンス教室', c06: '英会話教室', c18: '鷹栖REDWOLVES 男子U15',
+  c19: '鷹栖REDWOLVES 女子U15', c20: '鷹栖REDWOLVES 男女U12', c21: '鷹栖北野バドミントン少年団',
+  c08: '鷹栖バレーボールクラブ', c09: '鷹栖ソフトテニスクラブ', c10: '鷹栖剣道クラブ', c11: 'NexusBC',
+  c12: 'TakasuXC', c13: 'マルチスポーツクラブ', c22: '鷹栖剣道少年団',
+  c23: '鷹栖北野クロスカントリースキー少年団', c24: '鷹栖北野野球少年団', c26: '海洋クラブ',
+  c27: 'ソルリッサ', c28: '旭川ウィングスFC', c29: 'コンディショニング', c14: 'ヨガ教室',
+  c15: 'ストレッチ教室', c16: 'たかスポレッチ', c17: 'レッドコード教室',
+};
+function courseName_(id) { return COURSE_NAMES[id] || id; }
+
+// 会員本人による参加教室の変更（追加・削除）を事務局（ADMIN_EMAIL）へ通知する。
+// 管理者の編集では呼ばない。変更が無ければ送らない。送信失敗で更新自体は止めない。
+function notifyAdminCourseChange_(info) {
+  try {
+    var to = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL');
+    if (!to) { Logger.log('ADMIN_EMAIL 未設定のため教室変更通知をスキップしました'); return; }
+
+    var oldArr = info.oldIds ? String(info.oldIds).split(',').filter(String) : [];
+    var newArr = info.newIds ? String(info.newIds).split(',').filter(String) : [];
+    var added = newArr.filter(function (id) { return oldArr.indexOf(id) === -1; });
+    var removed = oldArr.filter(function (id) { return newArr.indexOf(id) === -1; });
+    if (added.length === 0 && removed.length === 0) return; // 変更なし
+
+    if (MailApp.getRemainingDailyQuota() <= 0) { Logger.log('送信上限のため教室変更通知をスキップしました'); return; }
+
+    var nameList = function (ids) {
+      return ids.length ? ids.map(function (id) { return '・' + courseName_(id); }).join('\n') : '（なし）';
+    };
+    var lines = [
+      '会員が参加教室を変更しました。',
+      '',
+      '会員番号: ' + info.memberNumber,
+      '氏名: ' + info.memberName,
+      '',
+    ];
+    if (added.length) lines.push('【追加した教室】', nameList(added), '');
+    if (removed.length) lines.push('【削除した教室】', nameList(removed), '');
+    lines.push('現在の参加教室:', nameList(newArr), '', '※このメールは自動送信です。会員管理システムでご確認ください。');
+
+    MailApp.sendEmail({
+      to: to,
+      subject: '【教室変更】' + info.memberName + '（' + info.memberNumber + '）',
+      body: lines.join('\n'),
+      name: CLUB_NAME,
+    });
+  } catch (e) {
+    Logger.log('教室変更通知メールの送信に失敗: ' + e);
+  }
+}
+
+// テスト用: 架空データで教室変更通知メールだけを送る（会員データは変更しない）。
+function testNotifyAdminCourseChange() {
+  var to = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL');
+  Logger.log('送信先 ADMIN_EMAIL: ' + (to || '(未設定)'));
+  notifyAdminCourseChange_({
+    memberNumber: 'TSC-TEST', memberName: 'テスト 太郎',
+    oldIds: 'c06,c08', newIds: 'c06,c10',
+  });
+  Logger.log('testNotifyAdminCourseChange 実行完了。受信トレイを確認してください。');
+}
+
 // 会員を一括登録（既存データ移行用・管理者専用）。
 // 採番のための最大値を一度だけ読み、全件を1回の setValues でまとめて追記する（高速）。
 function handleBulkRegister(members) {
@@ -807,10 +871,25 @@ function handleGetMember(memberId) {
   return { success: true, data: member };
 }
 
-function handleUpdateMember(memberId, data) {
+function handleUpdateMember(memberId, data, session) {
   const sheet = getSheet('members');
   const rowIndex = findRowIndex(sheet, 0, memberId);
   if (rowIndex < 0) return { success: false, error: '会員が見つかりません' };
+
+  // 教室変更を会員本人が行った場合に事務局へ通知するため、更新前の情報を控える。
+  var notifyCourse = (data.courseIds !== undefined && session && session.role === 'member');
+  var before = null;
+  if (notifyCourse) {
+    var ccol = colNum('members', 'courseIds');
+    var gn = String(sheet.getRange(rowIndex, colNum('members', 'groupName')).getValue() || '');
+    var ln = String(sheet.getRange(rowIndex, colNum('members', 'lastName')).getValue() || '');
+    var fn = String(sheet.getRange(rowIndex, colNum('members', 'firstName')).getValue() || '');
+    before = {
+      oldIds: ccol > 0 ? String(sheet.getRange(rowIndex, ccol).getValue() || '') : '',
+      memberNumber: String(sheet.getRange(rowIndex, colNum('members', 'memberNumber')).getValue() || ''),
+      memberName: gn || (ln + ' ' + fn).trim(),
+    };
+  }
 
   Object.keys(data).forEach(key => {
     const cn = colNum('members', key);
@@ -820,6 +899,14 @@ function handleUpdateMember(memberId, data) {
       sheet.getRange(rowIndex, cn).setValue(value);
     }
   });
+
+  if (notifyCourse) {
+    var newIds = Array.isArray(data.courseIds) ? data.courseIds.join(',') : String(data.courseIds || '');
+    notifyAdminCourseChange_({
+      memberNumber: before.memberNumber, memberName: before.memberName,
+      oldIds: before.oldIds, newIds: newIds,
+    });
+  }
 
   return { success: true };
 }
