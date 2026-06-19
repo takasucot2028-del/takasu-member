@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   BillingRecord,
   GroupBilling,
+  Course,
 } from '../types';
 
 // GAS Web App URL（デプロイ後に設定）
@@ -74,6 +75,13 @@ export const searchMembers = (query: string, token: string) =>
 
 export const getMembersByCoourse = (courseId: string, token: string) =>
   request<Member[]>('getMembersByCourse', { courseId, token });
+
+// === 教室マスタ ===
+// 取得は公開（新規登録画面でも使用）。保存は管理者専用。
+export const getCourses = () => request<Course[]>('getCourses');
+
+export const saveCourses = (courses: Course[], token: string) =>
+  request<{ saved: number }>('saveCourses', { courses, token });
 
 // === 事務局：請求管理 ===
 export const getBillingRecords = (yearMonth: string, token: string) =>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PageContainer, Card, Button, Table, Th, Td, Badge, Modal, Field, Input, Select, Alert } from '../../components/UI';
-import { COURSES, BILLING_STATUS_LABELS, SCHOOL_AID_MONTHLY_DISCOUNT } from '../../utils/constants';
+import { BILLING_STATUS_LABELS, SCHOOL_AID_MONTHLY_DISCOUNT } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import {
   getAllMembers, getBillingByMonth, saveBillingRecords, replaceMonthlyBilling,
   updateBillingStatus, calcAnnualFee, calcInsurance,
@@ -41,6 +42,7 @@ const sumFees = (f: Fees) =>
   f.annualFee + f.monthlyClassroom + f.monthlyConsigned + f.monthlyCommunity + f.insuranceFee + f.specialFee;
 
 export default function Billing() {
+  const { courses } = useCourses();
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
   const [records, setRecords] = useState<BillingRecord[]>([]);
   const [activeMembers, setActiveMembers] = useState<Member[]>([]);
@@ -101,7 +103,7 @@ export default function Billing() {
       if (m.registeredAt && m.registeredAt.slice(0, 7) > yearMonth) return;
       const f = emptyFees();
       m.courseIds.forEach(cid => {
-        const course = COURSES.find(c => c.id === cid);
+        const course = courses.find(c => c.id === cid);
         if (!course) return;
         const fee = m.areaType === 'in_town' ? course.feeInTown : course.feeOutOfTown;
         let charge = false;
@@ -232,7 +234,7 @@ export default function Billing() {
     }
   };
 
-  const termCourses = COURSES.filter(c => c.paymentMethod === 'term3' || c.paymentMethod === 'term1');
+  const termCourses = courses.filter(c => c.paymentMethod === 'term3' || c.paymentMethod === 'term1');
   const totalAmount = records.reduce((s, r) => s + r.total, 0);
   const cell = (n: number) => (n > 0 ? n.toLocaleString() : '-');
 

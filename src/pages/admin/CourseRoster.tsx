@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { PageContainer, Card, Select, Button, Table, Th, Td, Badge } from '../../components/UI';
-import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import { calcFiscalAge } from '../../utils/age';
 import { getMembersByCourse } from '../../api/data';
 import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
 
 export default function CourseRoster() {
+  const { courses } = useCourses();
   const [courseId, setCourseId] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
 
@@ -16,7 +18,7 @@ export default function CourseRoster() {
     else setMembers([]);
   };
 
-  const course = COURSES.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === courseId);
 
   const exportExcel = () => {
     if (!course) return;
@@ -48,8 +50,8 @@ export default function CourseRoster() {
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <Select value={courseId} onChange={e => handleSelect(e.target.value)} className="flex-1">
             <option value="">教室を選択...</option>
-            {COURSES.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.active === false ? '（無効）' : ''}</option>
             ))}
           </Select>
           {courseId && <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>}

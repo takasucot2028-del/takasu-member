@@ -29,6 +29,8 @@ export interface Course {
   feeInTown: number;
   feeOutOfTown: number;
   note: string;
+  // 有効フラグ。false の教室は新規の選択肢から隠す（未設定は有効とみなす）。
+  active?: boolean;
 }
 
 // 会員情報

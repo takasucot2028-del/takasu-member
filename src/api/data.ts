@@ -5,8 +5,8 @@
 // 全関数は Promise を返す（非同期統一）。
 // ページはこの層だけを参照し、バックエンドの差異を意識しない。
 // ============================================
-import type { Member, BillingRecord, GroupBilling, AuthResponse, BillingSchedule } from '../types';
-import { defaultBillingSchedule } from '../utils/constants';
+import type { Member, BillingRecord, GroupBilling, AuthResponse, BillingSchedule, Course } from '../types';
+import { defaultBillingSchedule, COURSES } from '../utils/constants';
 import * as local from '../utils/store';
 import * as gas from './client';
 
@@ -131,6 +131,27 @@ export async function runYearUpdate(fiscalYear: number): Promise<{ withdrawn: nu
 export async function getMembersByCourse(courseId: string): Promise<Member[]> {
   if (!USE_GAS) return local.getMembersByCourseLocal(courseId);
   return unwrap(await gas.getMembersByCoourse(courseId, token()), []).map(normalizeMember);
+}
+
+// === 教室マスタ ===
+// 有効フラグを正規化（未設定は有効扱い）。
+function normalizeCourse(c: Course): Course {
+  return { ...c, active: c.active !== false };
+}
+
+// 教室マスタを取得。GAS が空（未保存）なら固定の初期教室にフォールバックする。
+export async function getCourses(): Promise<Course[]> {
+  if (!USE_GAS) return local.getCoursesLocal();
+  const res = await gas.getCourses();
+  const list = res.success && res.data && res.data.length ? res.data : COURSES;
+  return list.map(normalizeCourse);
+}
+
+// 教室マスタを丸ごと保存（管理者専用）。
+export async function saveCourses(courses: Course[]): Promise<void> {
+  if (!USE_GAS) { local.saveCoursesLocal(courses); return; }
+  const res = await gas.saveCourses(courses, token());
+  if (!res.success) throw new Error(res.error || '教室マスタの保存に失敗しました');
 }
 
 // === 月次請求 ===

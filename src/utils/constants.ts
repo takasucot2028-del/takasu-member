@@ -67,9 +67,10 @@ export const BILLING_STATUS_LABELS: Record<string, string> = {
 
 // 請求スケジュールの初期値: 3期払いは第1〜3期=5/8/1月、1期払いは未設定（事務局が設定）。
 // 毎月払い・チケット・徴収なしはスケジュール対象外。
-export function defaultBillingSchedule(): Record<string, number[]> {
+// 教室マスタが可変になったため、対象の教室リストを引数で受け取れる（既定は固定の COURSES）。
+export function defaultBillingSchedule(courses: Course[] = COURSES): Record<string, number[]> {
   const sched: Record<string, number[]> = {};
-  COURSES.forEach(c => {
+  courses.forEach(c => {
     if (c.paymentMethod === 'term3') sched[c.id] = [5, 8, 1];
     else if (c.paymentMethod === 'term1') sched[c.id] = [];
   });

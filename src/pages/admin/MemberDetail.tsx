@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
-import { COURSES, MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
+import { MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import { calcFiscalAge, currentFiscalYear } from '../../utils/age';
 import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance } from '../../api/data';
 import type { Member } from '../../types';
@@ -9,6 +10,7 @@ import type { Member } from '../../types';
 export default function MemberDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { courses } = useCourses();
   const [member, setMember] = useState<Member | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
@@ -56,7 +58,9 @@ export default function MemberDetail() {
 
   const annualFee = calcAnnualFee(member.memberType, member.areaType);
   const insurance = calcInsurance(member.memberType, member.memberCount);
-  const enrolledCourses = COURSES.filter(c => member.courseIds.includes(c.id));
+  const enrolledCourses = courses.filter(c => member.courseIds.includes(c.id));
+  // 選択肢は有効な教室＋すでに選択中の教室（無効化後も外せるよう表示）
+  const selectableCourses = courses.filter(c => c.active !== false || (form.courseIds || []).includes(c.id));
 
   return (
     <PageContainer title="会員詳細">
@@ -167,10 +171,11 @@ export default function MemberDetail() {
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium text-sm text-gray-700 mb-2">参加教室</h3>
                   <div className="space-y-1">
-                    {COURSES.map(c => (
+                    {selectableCourses.map(c => (
                       <label key={c.id} className="flex items-center gap-2 p-1 text-sm cursor-pointer hover:bg-gray-50 rounded">
                         <input type="checkbox" checked={(form.courseIds || []).includes(c.id)} onChange={() => toggleCourse(c.id)} />
                         {c.name}
+                        {c.active === false && <span className="text-gray-400 text-xs">（無効）</span>}
                       </label>
                     ))}
                   </div>

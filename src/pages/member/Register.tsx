@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { PageContainer, Card, Field, Input, Select, Button, Alert } from '../../components/UI';
-import { COURSES, MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import { registerNewMember, memberLogin } from '../../api/data';
 import type { MemberType, AreaType } from '../../types';
 
@@ -29,6 +30,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const { login } = useAuth();
+  const { activeCourses } = useCourses();
   const navigate = useNavigate();
 
   const set = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
@@ -134,7 +136,7 @@ export default function Register() {
     );
   }
 
-  const availableCourses = form.memberType === 'group' ? [] : COURSES;
+  const availableCourses = form.memberType === 'group' ? [] : activeCourses;
 
   return (
     <PageContainer title="新規会員登録">

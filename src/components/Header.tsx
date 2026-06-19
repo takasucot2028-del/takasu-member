@@ -24,6 +24,7 @@ export default function Header() {
           <nav className="hidden sm:flex items-center gap-1 text-xs">
             <NavLink to="/admin/members" current={location.pathname}>会員一覧</NavLink>
             <NavLink to="/admin/courses" current={location.pathname}>教室別名簿</NavLink>
+            <NavLink to="/admin/course-master" current={location.pathname}>教室管理</NavLink>
             <NavLink to="/admin/insurance" current={location.pathname}>保険管理</NavLink>
             <NavLink to="/admin/billing" current={location.pathname}>継続会費</NavLink>
             <NavLink to="/admin/billing/group" current={location.pathname}>団体請求</NavLink>
@@ -49,6 +50,7 @@ export default function Header() {
         <nav className="sm:hidden flex overflow-x-auto border-t border-gray-100 px-4 gap-1 text-xs">
           <NavLink to="/admin/members" current={location.pathname}>会員</NavLink>
           <NavLink to="/admin/courses" current={location.pathname}>教室</NavLink>
+          <NavLink to="/admin/course-master" current={location.pathname}>教室管理</NavLink>
           <NavLink to="/admin/insurance" current={location.pathname}>保険</NavLink>
           <NavLink to="/admin/billing" current={location.pathname}>会費</NavLink>
           <NavLink to="/admin/billing/group" current={location.pathname}>団体</NavLink>

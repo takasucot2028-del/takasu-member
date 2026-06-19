@@ -36,8 +36,8 @@ var SHEETS = {
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
   ] },
   courses: { name: '教室マスタ', columns: [
-    ['id', 'ID'], ['name', '教室名'], ['paymentMethod', '支払方式'],
-    ['feeInTown', '町内料金'], ['feeOutOfTown', '町外料金'], ['note', '備考'],
+    ['id', 'ID'], ['name', '教室名'], ['paymentMethod', '支払方式'], ['category', 'カテゴリ'],
+    ['feeInTown', '町内料金'], ['feeOutOfTown', '町外料金'], ['note', '備考'], ['active', '有効'],
   ] },
   billing: { name: '継続会費', columns: [
     ['id', 'ID'], ['memberId', '会員ID'], ['memberNumber', '会員番号'], ['memberName', '氏名'],
@@ -401,7 +401,7 @@ function getSession(token) {
 }
 
 // 認可: 公開アクション以外はトークン必須。管理者専用／本人or管理者を区別する。
-var PUBLIC_ACTIONS = { login: true, adminLogin: true, registerMember: true };
+var PUBLIC_ACTIONS = { login: true, adminLogin: true, registerMember: true, getCourses: true };
 var SELF_OR_ADMIN_ACTIONS = { getMember: true, updateMember: true, withdrawMember: true };
 // 認証済みなら誰でも可（ハンドラ側でセッションの世帯に限定）
 var AUTHED_ACTIONS = { getMemberBilling: true, changePassword: true };
@@ -468,6 +468,12 @@ function doPost(e) {
         break;
       case 'getMembersByCourse':
         result = handleGetMembersByCourse(body.courseId);
+        break;
+      case 'getCourses':
+        result = handleGetCourses();
+        break;
+      case 'saveCourses':
+        result = handleSaveCourses(body.courses);
         break;
       case 'getBillingRecords':
         result = handleGetBilling(body.yearMonth);
@@ -694,7 +700,19 @@ var COURSE_NAMES = {
   c27: 'ソルリッサ', c28: '旭川ウィングスFC', c29: 'コンディショニング', c14: 'ヨガ教室',
   c15: 'ストレッチ教室', c16: 'たかスポレッチ', c17: 'レッドコード教室',
 };
-function courseName_(id) { return COURSE_NAMES[id] || id; }
+// 教室名の解決: まず教室マスタシートの最新名称、無ければ固定マップ、最後にID。
+function courseNameMap_() {
+  var map = {};
+  try {
+    var res = handleGetCourses();
+    if (res && res.data) res.data.forEach(function (c) { map[c.id] = c.name; });
+  } catch (e) { /* シート未作成等は無視してフォールバック */ }
+  return map;
+}
+function courseName_(id, map) {
+  if (map && map[id]) return map[id];
+  return COURSE_NAMES[id] || id;
+}
 
 // 会員本人による参加教室の変更（追加・削除）を事務局（ADMIN_EMAIL）へ通知する。
 // 管理者の編集では呼ばない。変更が無ければ送らない。送信失敗で更新自体は止めない。
@@ -711,8 +729,9 @@ function notifyAdminCourseChange_(info) {
 
     if (MailApp.getRemainingDailyQuota() <= 0) { Logger.log('送信上限のため教室変更通知をスキップしました'); return; }
 
+    var nmap = courseNameMap_();
     var nameList = function (ids) {
-      return ids.length ? ids.map(function (id) { return '・' + courseName_(id); }).join('\n') : '（なし）';
+      return ids.length ? ids.map(function (id) { return '・' + courseName_(id, nmap); }).join('\n') : '（なし）';
     };
     var lines = [
       '会員が参加教室を変更しました。',
@@ -965,6 +984,44 @@ function handleGetBilling(yearMonth) {
   const records = sheetToObjects(sheet, 'billing').filter(function (r) { return ym7(r.yearMonth) === yearMonth; });
   records.forEach(function (r) { r.yearMonth = ym7(r.yearMonth); });
   return { success: true, data: records };
+}
+
+// 教室マスタを取得する（公開：新規登録画面でも使う）。空なら空配列を返し、
+// フロント側で固定の初期教室にフォールバックする。
+function handleGetCourses() {
+  const sheet = getSheet('courses');
+  const courses = sheetToObjects(sheet, 'courses').map(function (c) {
+    return {
+      id: String(c.id), name: String(c.name),
+      paymentMethod: String(c.paymentMethod), category: String(c.category),
+      feeInTown: Number(c.feeInTown) || 0, feeOutOfTown: Number(c.feeOutOfTown) || 0,
+      note: String(c.note || ''),
+      active: !(c.active === false || String(c.active).toLowerCase() === 'false'),
+    };
+  }).filter(function (c) { return c.id; });
+  return { success: true, data: courses };
+}
+
+// 教室マスタを丸ごと保存する（管理者専用）。見出しを含めてシートを書き直すため、
+// 列構成のずれ（旧バージョンのシート）も保存時に修正される。
+function handleSaveCourses(courses) {
+  const sheet = getSheet('courses');
+  const labels = colLabels('courses');
+  const keys = colKeys('courses');
+  sheet.clear();
+  sheet.getRange(1, 1, 1, labels.length).setValues([labels]);
+  sheet.setFrozenRows(1);
+  const list = courses || [];
+  if (list.length) {
+    const rows = list.map(function (c) {
+      return keys.map(function (k) {
+        if (k === 'active') return c.active !== false;
+        return c[k] !== undefined && c[k] !== null ? c[k] : '';
+      });
+    });
+    sheet.getRange(2, 1, rows.length, keys.length).setValues(rows);
+  }
+  return { success: true, data: { saved: list.length } };
 }
 
 function handleUpdateBillingStatus(billingId, status) {

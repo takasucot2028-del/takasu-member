@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthContext';
+import { CoursesProvider } from './components/CoursesContext';
 import Header from './components/Header';
 
 // 会員側
@@ -12,6 +13,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import MemberList from './pages/admin/MemberList';
 import MemberDetail from './pages/admin/MemberDetail';
 import CourseRoster from './pages/admin/CourseRoster';
+import CourseMaster from './pages/admin/CourseMaster';
 import Insurance from './pages/admin/Insurance';
 import Billing from './pages/admin/Billing';
 import GroupBillingPage from './pages/admin/GroupBilling';
@@ -45,6 +47,7 @@ function AppRoutes() {
         <Route path="/admin/members" element={<AdminGuard><MemberList /></AdminGuard>} />
         <Route path="/admin/member/:id" element={<AdminGuard><MemberDetail /></AdminGuard>} />
         <Route path="/admin/courses" element={<AdminGuard><CourseRoster /></AdminGuard>} />
+        <Route path="/admin/course-master" element={<AdminGuard><CourseMaster /></AdminGuard>} />
         <Route path="/admin/insurance" element={<AdminGuard><Insurance /></AdminGuard>} />
         <Route path="/admin/billing" element={<AdminGuard><Billing /></AdminGuard>} />
         <Route path="/admin/billing/group" element={<AdminGuard><GroupBillingPage /></AdminGuard>} />
@@ -59,7 +62,9 @@ export default function App() {
   return (
     <HashRouter>
       <AuthProvider>
-        <AppRoutes />
+        <CoursesProvider>
+          <AppRoutes />
+        </CoursesProvider>
       </AuthProvider>
     </HashRouter>
   );

@@ -1,11 +1,12 @@
-import type { Member, BillingRecord, GroupBilling, AuthResponse, MemberType, AreaType, BillingSchedule } from '../types';
-import { ANNUAL_FEES, INSURANCE_FEES, defaultBillingSchedule } from './constants';
+import type { Member, BillingRecord, GroupBilling, AuthResponse, MemberType, AreaType, BillingSchedule, Course } from '../types';
+import { ANNUAL_FEES, INSURANCE_FEES, defaultBillingSchedule, COURSES } from './constants';
 
 const STORAGE_KEY = 'tsc_members';
 const BILLING_KEY = 'tsc_billing';
 const GROUP_BILLING_KEY = 'tsc_group_billing';
 const ADMIN_KEY = 'tsc_admin';
 const SCHEDULE_KEY = 'tsc_billing_schedule';
+const COURSES_KEY = 'tsc_courses';
 
 // --- ユーティリティ ---
 function genId(): string {
@@ -194,6 +195,26 @@ export function searchMembersLocal(query: string): Member[] {
 
 export function getMembersByCourseLocal(courseId: string): Member[] {
   return loadMembers().filter(m => !m.isWithdrawn && m.courseIds.includes(courseId));
+}
+
+// --- 教室マスタ ---
+// 初回は固定の COURSES で初期化（以後は localStorage を編集の正本とする）。
+export function getCoursesLocal(): Course[] {
+  const raw = localStorage.getItem(COURSES_KEY);
+  if (!raw) {
+    const seed = COURSES.map(c => ({ ...c, active: c.active !== false }));
+    localStorage.setItem(COURSES_KEY, JSON.stringify(seed));
+    return seed;
+  }
+  try {
+    return (JSON.parse(raw) as Course[]).map(c => ({ ...c, active: c.active !== false }));
+  } catch {
+    return COURSES.map(c => ({ ...c, active: c.active !== false }));
+  }
+}
+
+export function saveCoursesLocal(courses: Course[]) {
+  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
 }
 
 // --- 年会費計算 ---

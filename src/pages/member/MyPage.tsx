@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { PageContainer, Card, Field, Input, Select, Button, Alert, Badge } from '../../components/UI';
-import { COURSES, MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
+import { MEMBER_TYPE_LABELS, GENDER_LABELS } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import { getMemberById, updateMemberData, calcAnnualFee, calcInsurance, getMemberBilling, changePassword } from '../../api/data';
 import type { Member, BillingRecord } from '../../types';
 
@@ -31,6 +32,7 @@ function statusText(s: string): string {
 
 export default function MyPage() {
   const { member, members, activeMemberId, setActiveMemberId, token, setMember, setHousehold, logout } = useAuth();
+  const { courses } = useCourses();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
@@ -124,7 +126,9 @@ export default function MyPage() {
 
   const annualFee = calcAnnualFee(member.memberType, member.areaType);
   const insurance = calcInsurance(member.memberType, member.memberCount);
-  const enrolledCourses = COURSES.filter(c => member.courseIds.includes(c.id));
+  const enrolledCourses = courses.filter(c => member.courseIds.includes(c.id));
+  // 選択肢は有効な教室＋すでに参加中の教室（無効化後も外せるよう表示）
+  const selectableCourses = courses.filter(c => c.active !== false || (form.courseIds || []).includes(c.id));
 
   return (
     <PageContainer title="マイページ">
@@ -253,7 +257,7 @@ export default function MyPage() {
             </div>
             {editing ? (
               <div className="space-y-2">
-                {COURSES.map(c => (
+                {selectableCourses.map(c => (
                   <label key={c.id} className="flex items-start gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
                     <input
                       type="checkbox"
