@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Modal, Field, Alert } from '../../components/UI';
+import { PageContainer, Card, Input, Select, Button, Table, Th, Td, Badge, Modal, Field, Alert } from '../../components/UI';
 import { MEMBER_TYPE_LABELS } from '../../utils/constants';
+import { useCourses } from '../../components/CoursesContext';
 import { calcFiscalAge } from '../../utils/age';
 import { getAllMembers, bulkRegisterMembers, runYearUpdate } from '../../api/data';
 import { downloadTemplate, parseWorkbook, DEFAULT_IMPORT_PASSWORD, type ImportMember } from '../../utils/memberImport';
@@ -9,9 +10,17 @@ import type { Member } from '../../types';
 import * as XLSX from 'xlsx';
 
 export default function MemberList() {
+  const { courses } = useCourses();
   const [members, setMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState('');
   const [showWithdrawn, setShowWithdrawn] = useState(false);
+  // 絞り込み条件
+  const [typeFilter, setTypeFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [insuranceFilter, setInsuranceFilter] = useState('');
+  const [cssMissing, setCssMissing] = useState(false);
+  const [genderMissing, setGenderMissing] = useState(false);
 
   // 一括インポート
   const fileRef = useRef<HTMLInputElement>(null);
@@ -112,7 +121,27 @@ export default function MemberList() {
       `${m.lastNameKana}${m.firstNameKana}`.includes(query) ||
       (m.groupName ? m.groupName.includes(query) : false)
     )
-    .filter(m => showWithdrawn || !m.isWithdrawn);
+    .filter(m => showWithdrawn || !m.isWithdrawn)
+    .filter(m => !typeFilter || m.memberType === typeFilter)
+    .filter(m => !areaFilter || m.areaType === areaFilter)
+    .filter(m => !courseFilter || (m.courseIds || []).includes(courseFilter))
+    .filter(m => {
+      if (!insuranceFilter) return true;
+      if (insuranceFilter === 'enrolled') return !!m.insuranceEnrolled;
+      // 未加入：一般会員は保険対象外なので除外し、ジュニア・団体で未加入のもの
+      return m.memberType !== 'general' && !m.insuranceEnrolled;
+    })
+    .filter(m => !cssMissing || !String(m.cssNumber ?? '').trim())
+    .filter(m => !genderMissing || (m.memberType !== 'group' && !m.gender));
+
+  const activeFilterCount =
+    (typeFilter ? 1 : 0) + (areaFilter ? 1 : 0) + (courseFilter ? 1 : 0) +
+    (insuranceFilter ? 1 : 0) + (cssMissing ? 1 : 0) + (genderMissing ? 1 : 0);
+
+  const clearFilters = () => {
+    setTypeFilter(''); setAreaFilter(''); setCourseFilter(''); setInsuranceFilter('');
+    setCssMissing(false); setGenderMissing(false);
+  };
 
   const exportExcel = () => {
     const rows = filtered.map(m => ({
@@ -150,6 +179,51 @@ export default function MemberList() {
           <Button size="sm" variant="secondary" onClick={exportExcel}>Excel出力</Button>
           <Button size="sm" variant="secondary" onClick={() => { setImportModal(true); setImportMsg(''); setParsed([]); setParseErrors([]); setSkipped([]); }}>一括インポート</Button>
           <Button size="sm" variant="secondary" onClick={() => { setYearModal(true); setImportMsg(''); }}>年度更新</Button>
+        </div>
+
+        {/* 絞り込み */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="w-36">
+            <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="text-xs">
+              <option value="">種別：全て</option>
+              <option value="general">一般会員</option>
+              <option value="junior">ジュニア会員</option>
+              <option value="group">団体会員</option>
+            </Select>
+          </div>
+          <div className="w-28">
+            <Select value={areaFilter} onChange={e => setAreaFilter(e.target.value)} className="text-xs">
+              <option value="">区分：全て</option>
+              <option value="in_town">町内</option>
+              <option value="out_of_town">町外</option>
+            </Select>
+          </div>
+          <div className="w-44">
+            <Select value={courseFilter} onChange={e => setCourseFilter(e.target.value)} className="text-xs">
+              <option value="">教室：全て</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.name}{c.active === false ? '（無効）' : ''}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-36">
+            <Select value={insuranceFilter} onChange={e => setInsuranceFilter(e.target.value)} className="text-xs">
+              <option value="">保険：全て</option>
+              <option value="enrolled">加入</option>
+              <option value="not">未加入（対象者）</option>
+            </Select>
+          </div>
+          <label className="flex items-center gap-1 text-xs text-gray-600">
+            <input type="checkbox" checked={cssMissing} onChange={e => setCssMissing(e.target.checked)} />
+            CSS未設定
+          </label>
+          <label className="flex items-center gap-1 text-xs text-gray-600">
+            <input type="checkbox" checked={genderMissing} onChange={e => setGenderMissing(e.target.checked)} />
+            性別未設定
+          </label>
+          {activeFilterCount > 0 && (
+            <Button size="sm" variant="ghost" onClick={clearFilters}>条件クリア（{activeFilterCount}）</Button>
+          )}
         </div>
 
         {importMsg && <Alert type="success">{importMsg}</Alert>}
