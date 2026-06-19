@@ -990,6 +990,18 @@ function handleGetBilling(yearMonth) {
 // フロント側で固定の初期教室にフォールバックする。
 function handleGetCourses() {
   const sheet = getSheet('courses');
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return { success: true, data: [] };
+  // 旧フォーマット（カテゴリ・有効列が無い等）のシートは列位置がずれて誤読するため、
+  // 見出しが現在の定義と一致しない場合は空を返し、フロントの既定教室にフォールバックさせる。
+  // 教室管理で一度「保存」すると、正しい列構成でシート全体が書き直される。
+  const header = values[0].map(function (h) { return String(h); });
+  const expected = colLabels('courses');
+  const headerOk = expected.every(function (label, i) { return header[i] === label; });
+  if (!headerOk) {
+    Logger.log('教室マスタの列が旧形式のため空として扱います（教室管理で保存すると修正されます）');
+    return { success: true, data: [] };
+  }
   const courses = sheetToObjects(sheet, 'courses').map(function (c) {
     return {
       id: String(c.id), name: String(c.name),

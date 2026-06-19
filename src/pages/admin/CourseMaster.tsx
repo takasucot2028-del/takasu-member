@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PageContainer, Card, Button, Table, Th, Td, Badge, Modal, Field, Input, Select, Alert } from '../../components/UI';
-import { PAYMENT_METHOD_LABELS, COURSE_CATEGORY_LABELS } from '../../utils/constants';
+import { PAYMENT_METHOD_LABELS, COURSE_CATEGORY_LABELS, COURSES } from '../../utils/constants';
 import { useCourses } from '../../components/CoursesContext';
 import { saveCourses } from '../../api/data';
 import type { Course, PaymentMethod, CourseCategory } from '../../types';
@@ -76,12 +76,23 @@ export default function CourseMaster() {
     await persist(next);
   };
 
+  // 既定の教室一覧で上書き保存する（初期化・復旧用）。
+  const initializeDefaults = async () => {
+    if (!confirm('現在の教室マスタを既定の教室一覧で上書きして保存します。よろしいですか？')) return;
+    const defaults = COURSES.map(c => ({ ...c, active: c.active !== false }));
+    setList(defaults);
+    await persist(defaults);
+  };
+
   return (
     <PageContainer title="教室管理">
       <Card>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">{list.length}教室</p>
-          <Button size="sm" onClick={openNew} disabled={saving}>＋ 新規教室を追加</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={initializeDefaults} disabled={saving}>既定の教室で初期化</Button>
+            <Button size="sm" onClick={openNew} disabled={saving}>＋ 新規教室を追加</Button>
+          </div>
         </div>
 
         {msg && <Alert type="success">{msg}</Alert>}
