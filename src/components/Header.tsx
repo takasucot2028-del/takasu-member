@@ -15,13 +15,14 @@ export default function Header() {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link to={role === 'admin' ? '/admin/members' : '/'} className="font-bold text-gray-800 text-sm">
+        <Link to={role === 'admin' ? '/admin/dashboard' : '/'} className="font-bold text-gray-800 text-sm">
           <span className="text-blue-600">TSC</span>{' '}
           {isAdmin ? '事務局管理' : '会員管理'}
         </Link>
 
         {isLoggedIn && role === 'admin' && (
           <nav className="hidden sm:flex items-center gap-1 text-xs">
+            <NavLink to="/admin/dashboard" current={location.pathname}>ダッシュボード</NavLink>
             <NavLink to="/admin/members" current={location.pathname}>会員一覧</NavLink>
             <NavLink to="/admin/courses" current={location.pathname}>教室別名簿</NavLink>
             <NavLink to="/admin/course-master" current={location.pathname}>教室管理</NavLink>
@@ -48,6 +49,7 @@ export default function Header() {
       {/* モバイルナビ */}
       {isLoggedIn && role === 'admin' && (
         <nav className="sm:hidden flex overflow-x-auto border-t border-gray-100 px-4 gap-1 text-xs">
+          <NavLink to="/admin/dashboard" current={location.pathname}>ホーム</NavLink>
           <NavLink to="/admin/members" current={location.pathname}>会員</NavLink>
           <NavLink to="/admin/courses" current={location.pathname}>教室</NavLink>
           <NavLink to="/admin/course-master" current={location.pathname}>教室管理</NavLink>

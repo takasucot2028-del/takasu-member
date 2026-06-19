@@ -16,7 +16,7 @@ export default function AdminLogin() {
     const result = await adminLoginCheck(email, password);
     if (result.success && result.token) {
       login(result.token, 'admin');
-      navigate('/admin/members');
+      navigate('/admin/dashboard');
     } else {
       setError(result.error || 'ログインに失敗しました');
     }

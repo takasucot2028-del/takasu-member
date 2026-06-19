@@ -10,6 +10,7 @@ import MyPage from './pages/member/MyPage';
 
 // 事務局側
 import AdminLogin from './pages/admin/AdminLogin';
+import Dashboard from './pages/admin/Dashboard';
 import MemberList from './pages/admin/MemberList';
 import MemberDetail from './pages/admin/MemberDetail';
 import CourseRoster from './pages/admin/CourseRoster';
@@ -44,6 +45,7 @@ function AppRoutes() {
 
         {/* 事務局側 */}
         <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminGuard><Dashboard /></AdminGuard>} />
         <Route path="/admin/members" element={<AdminGuard><MemberList /></AdminGuard>} />
         <Route path="/admin/member/:id" element={<AdminGuard><MemberDetail /></AdminGuard>} />
         <Route path="/admin/courses" element={<AdminGuard><CourseRoster /></AdminGuard>} />
