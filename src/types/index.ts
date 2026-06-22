@@ -70,6 +70,8 @@ export interface Member {
   schoolAidRecipient?: boolean;   // 就学援助受給世帯（地域クラブ参加費から毎月2,000円控除）
   insuranceEnrolled?: boolean;    // スポーツ安全保険 加入フラグ
   insuranceEnrolledAt?: string;   // 保険加入日（YYYY-MM-DD）
+  annualFeePaid?: boolean;        // 年会費 支払済フラグ
+  annualFeePaidAt?: string;       // 年会費 支払日（YYYY-MM-DD）
   nextYearStatus?: NextYearStatus; // 翌年度の継続意思
 }
 

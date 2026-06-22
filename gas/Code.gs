@@ -31,6 +31,7 @@ var SHEETS = {
     ['cssNumber', 'CSS番号'], ['insuranceEnrolled', '保険加入'], ['insuranceEnrolledAt', '保険加入日'],
     ['nextYearStatus', '翌年度意思'], ['gender', '性別'], ['schoolAidRecipient', '就学援助受給'],
     ['cssNumberCommunity', '地域クラブ用CSS番号'],
+    ['annualFeePaid', '年会費支払済'], ['annualFeePaidAt', '年会費支払日'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -628,6 +629,7 @@ function handleRegister(data) {
     data.cssNumber || '', data.insuranceEnrolled || false, data.insuranceEnrolledAt || '',
     data.nextYearStatus || '', data.gender || '', data.schoolAidRecipient || false,
     data.cssNumberCommunity || '',
+    data.annualFeePaid || false, data.annualFeePaidAt || '',
   ];
   sheet.appendRow(row);
 
@@ -802,6 +804,7 @@ function handleBulkRegister(members) {
       d.cssNumber || '', d.insuranceEnrolled || false, d.insuranceEnrolledAt || '',
       d.nextYearStatus || '', d.gender || '', d.schoolAidRecipient || false,
       d.cssNumberCommunity || '',
+      d.annualFeePaid || false, d.annualFeePaidAt || '',
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });
@@ -821,6 +824,8 @@ function handleRunYearUpdate(fiscalYear) {
   const nyCol = colNum('members', 'nextYearStatus');
   const insCol = colNum('members', 'insuranceEnrolled');
   const insAtCol = colNum('members', 'insuranceEnrolledAt');
+  const feeCol = colNum('members', 'annualFeePaid');
+  const feeAtCol = colNum('members', 'annualFeePaidAt');
   const apr = fiscalYear + '-04-01';
   let withdrawn = 0, continued = 0;
   for (let i = 1; i < data.length; i++) {
@@ -834,6 +839,9 @@ function handleRunYearUpdate(fiscalYear) {
     } else {
       const insured = data[i][insCol - 1] === true || String(data[i][insCol - 1]) === 'true';
       if (insured) sheet.getRange(row, insAtCol).setValue(apr);
+      // 年会費は毎年支払いのため、継続会員の支払済を新年度はリセットする
+      if (feeCol > 0) sheet.getRange(row, feeCol).setValue(false);
+      if (feeAtCol > 0) sheet.getRange(row, feeAtCol).setValue('');
       sheet.getRange(row, nyCol).setValue('');
       continued++;
     }

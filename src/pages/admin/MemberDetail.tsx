@@ -158,6 +158,13 @@ export default function MemberDetail() {
                     </Field>
                   </>
                 )}
+                <label className="flex items-center gap-2 text-sm py-1">
+                  <input type="checkbox" checked={!!form.annualFeePaid} onChange={e => set('annualFeePaid', e.target.checked)} />
+                  年会費 支払済
+                </label>
+                <Field label="年会費 支払日">
+                  <Input type="date" value={form.annualFeePaidAt || ''} onChange={e => set('annualFeePaidAt', e.target.value)} />
+                </Field>
                 <Field label="翌年度の意思">
                   <Select value={form.nextYearStatus || ''} onChange={e => set('nextYearStatus', e.target.value)}>
                     <option value="">未回答</option>
@@ -231,6 +238,11 @@ export default function MemberDetail() {
                       : '未加入'}
                   </Row>
                 )}
+                <Row label="年会費">
+                  {member.annualFeePaid
+                    ? `支払済${member.annualFeePaidAt ? `（${member.annualFeePaidAt}）` : ''}`
+                    : '未払'}
+                </Row>
                 <Row label="翌年度">
                   {member.nextYearStatus === 'continue' ? '継続'
                     : member.nextYearStatus === 'withdraw' ? '退会'

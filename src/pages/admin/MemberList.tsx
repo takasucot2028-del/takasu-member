@@ -19,6 +19,7 @@ export default function MemberList() {
   const [areaFilter, setAreaFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [insuranceFilter, setInsuranceFilter] = useState('');
+  const [annualFeeFilter, setAnnualFeeFilter] = useState('');
   const [cssMissing, setCssMissing] = useState(false);
   const [genderMissing, setGenderMissing] = useState(false);
 
@@ -131,16 +132,20 @@ export default function MemberList() {
       // 未加入：一般会員は保険対象外なので除外し、ジュニア・団体で未加入のもの
       return m.memberType !== 'general' && !m.insuranceEnrolled;
     })
+    .filter(m => {
+      if (!annualFeeFilter) return true;
+      return annualFeeFilter === 'paid' ? !!m.annualFeePaid : !m.annualFeePaid;
+    })
     .filter(m => !cssMissing || !String(m.cssNumber ?? '').trim())
     .filter(m => !genderMissing || (m.memberType !== 'group' && !m.gender));
 
   const activeFilterCount =
     (typeFilter ? 1 : 0) + (areaFilter ? 1 : 0) + (courseFilter ? 1 : 0) +
-    (insuranceFilter ? 1 : 0) + (cssMissing ? 1 : 0) + (genderMissing ? 1 : 0);
+    (insuranceFilter ? 1 : 0) + (annualFeeFilter ? 1 : 0) + (cssMissing ? 1 : 0) + (genderMissing ? 1 : 0);
 
   const clearFilters = () => {
     setTypeFilter(''); setAreaFilter(''); setCourseFilter(''); setInsuranceFilter('');
-    setCssMissing(false); setGenderMissing(false);
+    setAnnualFeeFilter(''); setCssMissing(false); setGenderMissing(false);
   };
 
   const exportExcel = () => {
@@ -151,6 +156,8 @@ export default function MemberList() {
       'フリガナ': `${m.lastNameKana} ${m.firstNameKana}`,
       '区分': m.areaType === 'in_town' ? '町内' : '町外',
       '年齢': m.memberType === 'group' ? '' : (calcFiscalAge(m.birthDate) ?? ''),
+      '年会費': m.annualFeePaid ? '支払済' : '未払',
+      '年会費支払日': m.annualFeePaidAt || '',
       '電話': m.phone,
       'メール': m.email,
       '状態': m.isWithdrawn ? '退会' : '在籍',
@@ -213,6 +220,13 @@ export default function MemberList() {
               <option value="not">未加入（対象者）</option>
             </Select>
           </div>
+          <div className="w-36">
+            <Select value={annualFeeFilter} onChange={e => setAnnualFeeFilter(e.target.value)} className="text-xs">
+              <option value="">年会費：全て</option>
+              <option value="paid">支払済</option>
+              <option value="unpaid">未払</option>
+            </Select>
+          </div>
           <label className="flex items-center gap-1 text-xs text-gray-600">
             <input type="checkbox" checked={cssMissing} onChange={e => setCssMissing(e.target.checked)} />
             CSS未設定
@@ -238,6 +252,7 @@ export default function MemberList() {
               <Th>氏名</Th>
               <Th className="hidden sm:table-cell">区分</Th>
               <Th className="hidden sm:table-cell">年齢</Th>
+              <Th>年会費</Th>
               <Th className="hidden sm:table-cell">電話</Th>
               <Th>状態</Th>
               <Th></Th>
@@ -253,6 +268,11 @@ export default function MemberList() {
                 </Td>
                 <Td className="hidden sm:table-cell">{m.areaType === 'in_town' ? '町内' : '町外'}</Td>
                 <Td className="hidden sm:table-cell text-xs">{m.memberType === 'group' ? '—' : (calcFiscalAge(m.birthDate) !== null ? `${calcFiscalAge(m.birthDate)}歳` : '—')}</Td>
+                <Td>
+                  {m.annualFeePaid
+                    ? <Badge color="green">支払済</Badge>
+                    : <Badge color="gray">未払</Badge>}
+                </Td>
                 <Td className="hidden sm:table-cell text-xs">{m.phone}</Td>
                 <Td>
                   {m.isWithdrawn
@@ -268,7 +288,7 @@ export default function MemberList() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><Td className="text-center text-gray-400 py-8" colSpan={8}>会員データがありません</Td></tr>
+              <tr><Td className="text-center text-gray-400 py-8" colSpan={9}>会員データがありません</Td></tr>
             )}
           </tbody>
         </Table>
