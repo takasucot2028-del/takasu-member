@@ -1182,6 +1182,30 @@ function handleSaveBillingSchedule(schedule) {
   return { success: true };
 }
 
+// 一度きり実行用: 英会話教室(c06)を「2か月分ずつ・年4回（6/9/11/2月の27日）引落」に設定する。
+// 本番の教室マスタシートに c06 の行がある場合はスケジュール制・10,000円へ更新し、
+// 請求月設定に c06 = [6,9,11,2] を保存する。GASエディタで本関数を実行する。
+function configEnglishClassBilling() {
+  var sheet = getSheet('courses');
+  var rowIndex = findRowIndex(sheet, 0, 'c06'); // id列（0始まり）
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, colNum('courses', 'paymentMethod')).setValue('scheduled');
+    sheet.getRange(rowIndex, colNum('courses', 'feeInTown')).setValue(10000);
+    sheet.getRange(rowIndex, colNum('courses', 'feeOutOfTown')).setValue(10000);
+    sheet.getRange(rowIndex, colNum('courses', 'note')).setValue('2か月分ずつ・年4回（6/9/11/2月）引落');
+    Logger.log('英会話教室(c06)を スケジュール制・10,000円 に更新しました');
+  } else {
+    Logger.log('教室マスタに c06 が見つかりません（シート未初期化なら既定値で動作します）');
+  }
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty('BILLING_SCHEDULE');
+  var sched = {};
+  if (raw) { try { sched = JSON.parse(raw); } catch (e) { sched = {}; } }
+  sched['c06'] = [6, 9, 11, 2];
+  props.setProperty('BILLING_SCHEDULE', JSON.stringify(sched));
+  Logger.log('請求月設定 c06 = [6,9,11,2] を保存しました');
+}
+
 function handleUpdateGroupBillingStatus(id, status) {
   const sheet = getSheet('billing_group');
   const rowIndex = findRowIndex(sheet, 0, id);

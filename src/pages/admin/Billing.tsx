@@ -108,7 +108,7 @@ export default function Billing() {
         const fee = m.areaType === 'in_town' ? course.feeInTown : course.feeOutOfTown;
         let charge = false;
         if (course.paymentMethod === 'monthly') charge = true;
-        else if (course.paymentMethod === 'term3' || course.paymentMethod === 'term1') {
+        else if (course.paymentMethod === 'term3' || course.paymentMethod === 'term1' || course.paymentMethod === 'scheduled') {
           charge = (schedule[cid] || []).includes(month);
         }
         if (!charge) return;
@@ -234,7 +234,7 @@ export default function Billing() {
     }
   };
 
-  const termCourses = courses.filter(c => c.paymentMethod === 'term3' || c.paymentMethod === 'term1');
+  const termCourses = courses.filter(c => c.paymentMethod === 'term3' || c.paymentMethod === 'term1' || c.paymentMethod === 'scheduled');
   const totalAmount = records.reduce((s, r) => s + r.total, 0);
   const cell = (n: number) => (n > 0 ? n.toLocaleString() : '-');
 

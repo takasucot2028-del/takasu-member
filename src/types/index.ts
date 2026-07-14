@@ -2,7 +2,8 @@
 export type MemberType = 'general' | 'junior' | 'group';
 
 // 支払方式（none = 徴収なし：自動請求の対象外、所属登録のみ）
-export type PaymentMethod = 'monthly' | 'term3' | 'term1' | 'ticket' | 'none';
+// scheduled = スケジュール制：請求月設定で指定した月にのみ課金（回数・月は自由）
+export type PaymentMethod = 'monthly' | 'term3' | 'term1' | 'ticket' | 'none' | 'scheduled';
 
 // 教室カテゴリ（継続会費の費目区分）
 // classroom = 教室 / consigned = 教室（委託） / community = 教室（地域クラブ）

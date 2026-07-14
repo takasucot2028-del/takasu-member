@@ -7,7 +7,7 @@ export const COURSES: Course[] = [
   { id: 'c25', name: '水泳教室（大人）', paymentMethod: 'none', category: 'consigned', feeInTown: 0, feeOutOfTown: 0, note: '年会費のみ（参加費の徴収なし）' },
   { id: 'c04', name: '幼児水泳教室', paymentMethod: 'term1', category: 'consigned', feeInTown: 2000, feeOutOfTown: 2000, note: '1期払い' },
   { id: 'c05', name: 'ダンス教室', paymentMethod: 'term3', category: 'classroom', feeInTown: 6000, feeOutOfTown: 6000, note: '3期払い' },
-  { id: 'c06', name: '英会話教室', paymentMethod: 'monthly', category: 'classroom', feeInTown: 5000, feeOutOfTown: 5000, note: '毎月払い' },
+  { id: 'c06', name: '英会話教室', paymentMethod: 'scheduled', category: 'classroom', feeInTown: 10000, feeOutOfTown: 10000, note: '2か月分ずつ・年4回（6/9/11/2月）引落' },
   { id: 'c18', name: '鷹栖REDWOLVES 男子U15', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c19', name: '鷹栖REDWOLVES 女子U15', paymentMethod: 'monthly', category: 'community', feeInTown: 2000, feeOutOfTown: 4000, note: '毎月払い' },
   { id: 'c20', name: '鷹栖REDWOLVES 男女U12', paymentMethod: 'none', category: 'community', feeInTown: 0, feeOutOfTown: 0, note: '徴収なし' },
@@ -55,6 +55,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   term1: '1期払い',
   ticket: 'チケット制',
   none: '徴収なし',
+  scheduled: 'スケジュール制',
 };
 
 export const BILLING_STATUS_LABELS: Record<string, string> = {
@@ -73,6 +74,8 @@ export function defaultBillingSchedule(courses: Course[] = COURSES): Record<stri
   courses.forEach(c => {
     if (c.paymentMethod === 'term3') sched[c.id] = [5, 8, 1];
     else if (c.paymentMethod === 'term1') sched[c.id] = [];
+    // スケジュール制：英会話教室(c06)は年4回（6/9/11/2月）に2か月分ずつ、それ以外は未設定
+    else if (c.paymentMethod === 'scheduled') sched[c.id] = c.id === 'c06' ? [6, 9, 11, 2] : [];
   });
   return sched;
 }
