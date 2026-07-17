@@ -28,13 +28,18 @@ function unwrap<T>(res: { success: boolean; data?: T; error?: string }, fallback
 export const calcAnnualFee = local.calcAnnualFee;
 export const calcInsurance = local.calcInsurance;
 
-// GAS（スプレッドシート）は数値のみのCSS番号を number として返すため、型(string)に正規化する。
-// 文字列として扱う各所（.trim() 等）でのクラッシュを防ぐ。
+// GAS（スプレッドシート）は数値のみのCSS番号・競技者登録番号を number として返すため、
+// 型(string)に正規化する。文字列として扱う各所（.trim() 等）でのクラッシュを防ぐ。
 function normalizeMember<T extends Member | undefined>(m: T): T {
-  if (m && m.cssNumber != null && typeof m.cssNumber !== 'string') {
-    return { ...m, cssNumber: String(m.cssNumber) };
+  if (!m) return m;
+  let out = m;
+  if (m.cssNumber != null && typeof m.cssNumber !== 'string') {
+    out = { ...out, cssNumber: String(m.cssNumber) };
   }
-  return m;
+  if (m.athleteNumber != null && typeof m.athleteNumber !== 'string') {
+    out = { ...out, athleteNumber: String(m.athleteNumber) };
+  }
+  return out;
 }
 
 // === 初期化（デモモードのみ管理者を作成） ===

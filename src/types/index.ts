@@ -73,6 +73,8 @@ export interface Member {
   insuranceEnrolledAt?: string;   // 保険加入日（YYYY-MM-DD）
   annualFeePaid?: boolean;        // 年会費 支払済フラグ
   annualFeePaidAt?: string;       // 年会費 支払日（YYYY-MM-DD）
+  athleteNumber?: string;         // 競技者登録番号（事務局が入力）
+  height?: number;                // 身長（cm・事務局が入力）
   nextYearStatus?: NextYearStatus; // 翌年度の継続意思
 }
 

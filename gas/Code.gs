@@ -32,6 +32,7 @@ var SHEETS = {
     ['nextYearStatus', '翌年度意思'], ['gender', '性別'], ['schoolAidRecipient', '就学援助受給'],
     ['cssNumberCommunity', '地域クラブ用CSS番号'],
     ['annualFeePaid', '年会費支払済'], ['annualFeePaidAt', '年会費支払日'],
+    ['athleteNumber', '競技者登録番号'], ['height', '身長(cm)'],
   ] },
   member_courses: { name: '会員教室', columns: [
     ['memberId', '会員ID'], ['courseId', '教室ID'], ['enrolledAt', '登録日'],
@@ -630,6 +631,7 @@ function handleRegister(data) {
     data.nextYearStatus || '', data.gender || '', data.schoolAidRecipient || false,
     data.cssNumberCommunity || '',
     data.annualFeePaid || false, data.annualFeePaidAt || '',
+    data.athleteNumber || '', data.height || '',
   ];
   sheet.appendRow(row);
 
@@ -805,6 +807,7 @@ function handleBulkRegister(members) {
       d.nextYearStatus || '', d.gender || '', d.schoolAidRecipient || false,
       d.cssNumberCommunity || '',
       d.annualFeePaid || false, d.annualFeePaidAt || '',
+      d.athleteNumber || '', d.height || '',
     ]);
     created.push({ id: id, memberNumber: memberNumber });
   });
