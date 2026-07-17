@@ -188,6 +188,20 @@ export default function MyPage() {
                   </Select>
                 </Field>
               )}
+              {member.memberType !== 'group' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="競技者登録番号">
+                    <Input value={form.athleteNumber || ''} onChange={e => set('athleteNumber', e.target.value)} placeholder="例: 1234567" />
+                  </Field>
+                  <Field label="身長（cm）">
+                    <Input
+                      type="number" step="0.1" min={0} placeholder="例: 165.5"
+                      value={form.height ?? ''}
+                      onChange={e => set('height', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                    />
+                  </Field>
+                </div>
+              )}
               <Field label="住所"><Input value={form.address || ''} onChange={e => set('address', e.target.value)} /></Field>
               <Field label="町内外区分">
                 <Select value={form.areaType || 'in_town'} onChange={e => set('areaType', e.target.value)}>
@@ -215,6 +229,8 @@ export default function MyPage() {
               <Row label="氏名">{member.lastName} {member.firstName}（{member.lastNameKana} {member.firstNameKana}）</Row>
               <Row label="生年月日">{member.birthDate}</Row>
               {member.memberType !== 'group' && <Row label="性別">{GENDER_LABELS[member.gender || ''] || '未設定'}</Row>}
+              {member.memberType !== 'group' && <Row label="競技者登録番号">{member.athleteNumber || '—'}</Row>}
+              {member.memberType !== 'group' && <Row label="身長">{member.height ? `${member.height} cm` : '—'}</Row>}
               <Row label="住所">{member.address}</Row>
               <Row label="区分">{member.areaType === 'in_town' ? '町内' : '町外'}</Row>
               <Row label="電話番号">{member.phone}</Row>
