@@ -150,9 +150,24 @@ export default function Billing() {
     });
 
     const newRecords = Object.values(recMap);
-    await replaceMonthlyBilling(yearMonth, newRecords);
+
+    // すでに処理済み（未請求以外＝請求済・引落完了・引落不能・繰越済）の請求は、
+    // 再生成で内容・ステータスを巻き戻さない。未請求のものだけ最新内容へ差し替える。
+    // （-adj- の手動調整は replaceMonthlyBilling 側で常に保持される）
+    const existing = (await getBillingByMonth(yearMonth)).filter(r => !r.id.includes('-adj-'));
+    const existingById = new Map(existing.map(r => [r.id, r]));
+    const merged = newRecords.map(r => {
+      const ex = existingById.get(r.id);
+      return ex && ex.status !== 'pending' ? ex : r;
+    });
+    // 生成対象に含まれなくなったが処理済みの既存レコード（途中で対象外になった会員等）も保持
+    const newIds = new Set(newRecords.map(r => r.id));
+    const preservedProcessed = existing.filter(r => r.status !== 'pending' && !newIds.has(r.id));
+    const finalRecords = [...merged, ...preservedProcessed];
+
+    await replaceMonthlyBilling(yearMonth, finalRecords);
     await loadBilling();
-    setMsg(`${yearMonth}の継続会費を${newRecords.length}件生成しました`);
+    setMsg(`${yearMonth}の継続会費を${finalRecords.length}件生成しました（処理済みは保持）`);
    } catch (e) {
      setMsg(`請求生成でエラーが発生しました: ${e instanceof Error ? e.message : String(e)}`);
    } finally {
