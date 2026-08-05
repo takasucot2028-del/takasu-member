@@ -1209,6 +1209,26 @@ function configEnglishClassBilling() {
   Logger.log('請求月設定 c06 = [6,9,11,2] を保存しました');
 }
 
+// 一度きり実行用: 3期払い教室の請求月を 5,8,1（各期の初月）→ 6,9,1（各期の引落月）へ修正する。
+// 保存済みの BILLING_SCHEDULE に古い [5,8,1] が残っている場合に本番を直すために使う。
+function fixTerm3Schedule() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty('BILLING_SCHEDULE');
+  var sched = {};
+  if (raw) { try { sched = JSON.parse(raw); } catch (e) { sched = {}; } }
+
+  // 教室マスタから3期払いの教室IDを取得（未初期化時は既定の3期払い教室にフォールバック）
+  var res = handleGetCourses();
+  var ids = (res && res.data ? res.data : [])
+    .filter(function (c) { return c.paymentMethod === 'term3'; })
+    .map(function (c) { return c.id; });
+  if (ids.length === 0) ids = ['c01', 'c02', 'c05'];
+
+  ids.forEach(function (id) { sched[id] = [6, 9, 1]; });
+  props.setProperty('BILLING_SCHEDULE', JSON.stringify(sched));
+  Logger.log('3期払いの請求月を [6,9,1] に更新しました: ' + ids.join(', '));
+}
+
 function handleUpdateGroupBillingStatus(id, status) {
   const sheet = getSheet('billing_group');
   const rowIndex = findRowIndex(sheet, 0, id);

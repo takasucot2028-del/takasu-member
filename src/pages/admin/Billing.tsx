@@ -368,7 +368,7 @@ export default function Billing() {
       {/* 請求月設定モーダル */}
       <Modal open={schedModal} onClose={() => setSchedModal(false)} title="請求月設定（3期・1期払い）">
         <p className="text-sm text-gray-600 mb-3">
-          教室ごとに請求する月をカンマ区切りで入力します（例: 3期払い「5,8,1」／1期払い「6」）。毎月払いは毎月のため設定不要です。
+          教室ごとに請求する月をカンマ区切りで入力します（例: 3期払い「6,9,1」／1期払い「6」）。毎月払いは毎月のため設定不要です。
         </p>
         <div className="space-y-2 max-h-96 overflow-auto">
           {termCourses.map(c => (
@@ -377,7 +377,7 @@ export default function Billing() {
               <Input
                 value={schedDraft[c.id] ?? ''}
                 onChange={e => setSchedDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
-                placeholder={c.paymentMethod === 'term3' ? '5,8,1' : '6'}
+                placeholder={c.paymentMethod === 'term3' ? '6,9,1' : '6'}
                 className="w-28"
               />
             </div>
