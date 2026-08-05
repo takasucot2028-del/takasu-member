@@ -63,8 +63,15 @@ export async function adminLoginCheck(email: string, password: string): Promise<
 export async function registerNewMember(
   data: Record<string, unknown> & { password?: string }
 ): Promise<Member> {
-  if (!USE_GAS) return local.registerNewMember(data);
-  const res = await gas.registerMember(data as never);
+  // 保険対象（ジュニア・団体）は入会と同時に保険加入リストへ自動追加する。
+  // 加入日＝登録日とし、新規保険加入者一覧・翌月の保険料計上に反映される（未加入リスクの防止）。
+  const enriched = { ...data };
+  if (data.memberType !== 'general' && !enriched.insuranceEnrolled) {
+    enriched.insuranceEnrolled = true;
+    enriched.insuranceEnrolledAt = (enriched.registeredAt as string) || new Date().toISOString().slice(0, 10);
+  }
+  if (!USE_GAS) return local.registerNewMember(enriched);
+  const res = await gas.registerMember(enriched as never);
   if (!res.success || !res.data) throw new Error(res.error || '会員登録に失敗しました');
   return res.data;
 }
