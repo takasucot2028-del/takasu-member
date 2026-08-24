@@ -66,8 +66,10 @@ export default function Transfer() {
   };
   // 教室別集計表をPDF（印刷）で出力する
   const exportCoursePdf = async () => {
-    const [mems, schedule] = await Promise.all([getAllMembers(), getBillingSchedule()]);
-    const rows = buildCourseTally(yearMonth, mems, courses, schedule);
+    const [mems, schedule, bills] = await Promise.all([
+      getAllMembers(), getBillingSchedule(), getBillingByMonth(yearMonth),
+    ]);
+    const rows = buildCourseTally(yearMonth, mems, courses, schedule, bills);
     const ok = openCourseSummaryPdf(yearMonth, rows);
     setMsg(ok
       ? '教室別集計表を開きました。印刷ダイアログで「PDFに保存」を選んでください。'
