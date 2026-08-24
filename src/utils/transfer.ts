@@ -256,6 +256,8 @@ export function buildCourseTally(
   });
 
   const roster = new Map<string, CourseTallyMember[]>();
+  const charged = new Set<string>(); // 教室会費で掲載済みの会員ID
+  const byMemberId = new Map(members.map(m => [m.id, m]));
   members
     .filter(m => !m.isWithdrawn && m.memberType !== 'group')
     .forEach(m => {
@@ -288,10 +290,12 @@ export function buildCourseTally(
           total: fee + ex.annual + ex.insurance + ex.special,
         });
         roster.set(cid, list);
+        charged.add(m.id);
       });
     });
-  // 教室マスタの並び順で、当月引落がある教室のみ返す（会員は会員番号順）
-  return courses
+
+  // 教室マスタの並び順で、当月引落がある教室のみ（会員は会員番号順）
+  const rows: CourseTallyRow[] = courses
     .filter(c => roster.has(c.id))
     .map(c => {
       const ms = roster.get(c.id)!.sort((a, b) => a.memberNumber.localeCompare(b.memberNumber));
@@ -304,6 +308,36 @@ export function buildCourseTally(
         subSpecial: ms.reduce((s, x) => s + x.special, 0),
       };
     });
+
+  // 教室会費が無くても、年会費・保険料・特別徴収の振替がある会員をまとめて掲載する。
+  const others: CourseTallyMember[] = [];
+  extra.forEach((ex, memberId) => {
+    if (charged.has(memberId)) return; // 既に教室会費で掲載済み
+    const amt = ex.annual + ex.insurance + ex.special;
+    if (amt <= 0) return;             // 振替がある会員のみ
+    const m = byMemberId.get(memberId);
+    if (!m || m.isWithdrawn || m.memberType === 'group') return;
+    others.push({
+      memberNumber: m.memberNumber,
+      name: `${m.lastName} ${m.firstName}`.trim(),
+      area: m.areaType === 'in_town' ? '町内' : '町外',
+      cssNumber: String(m.cssNumber ?? '').trim(),
+      fee: 0, annual: ex.annual, insurance: ex.insurance, special: ex.special,
+      total: amt,
+    });
+  });
+  if (others.length) {
+    others.sort((a, b) => a.memberNumber.localeCompare(b.memberNumber));
+    rows.push({
+      courseId: '__other__', name: '教室会費なし（年会費・保険料・特別徴収）', paymentMethod: '',
+      count: others.length, total: others.reduce((s, x) => s + x.total, 0), members: others,
+      subFee: 0,
+      subAnnual: others.reduce((s, x) => s + x.annual, 0),
+      subInsurance: others.reduce((s, x) => s + x.insurance, 0),
+      subSpecial: others.reduce((s, x) => s + x.special, 0),
+    });
+  }
+  return rows;
 }
 
 // 教室別集計表を印刷用ウィンドウで開く（ブラウザの「PDFに保存」で出力）。
@@ -329,7 +363,7 @@ export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]):
     ).join('');
     return `<div class="course${i < rows.length - 1 ? ' brk' : ''}">
       <h1>教室別 口座振替明細　<span class="pm">${monthLabel}</span></h1>
-      <h2>${esc(r.name)}<span class="pm">（${esc(PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod)}）</span></h2>
+      <h2>${esc(r.name)}${r.courseId === '__other__' ? '' : `<span class="pm">（${esc(PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod)}）</span>`}</h2>
       <table>
         <thead><tr>
           <th>会員番号</th><th>氏名</th><th class="c">区分</th><th class="c">CSS番号</th>
@@ -380,7 +414,7 @@ export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]):
     <button onclick="window.close()">閉じる</button>
   </div>
   <div class="note">
-    ※ 教室ごとにページを分けて印刷されます（教室担当者への配布用）。当月に口座振替（引落）がある教室のみ表示します（3期・1期・スケジュール制は請求月のみ／地域クラブ以外も含む）。<br>
+    ※ 教室ごとにページを分けて印刷されます（教室担当者への配布用）。当月に口座振替（引落）がある教室のみ表示します（3期・1期・スケジュール制は請求月のみ／地域クラブ以外も含む）。教室会費が無くても年会費・保険料・特別徴収の振替がある会員は「教室会費なし」のページに掲載します。<br>
     ※ 年会費・保険料・特別徴収は会員単位（当月）です。複数教室に参加する会員は各教室ページに再掲されるため、教室をまたいだ単純合算は二重計上になります。<br>
     ※ CSS番号は引落口座（地域クラブは地域クラブ用CSS／未設定なら主CSS）。「未設定」の会員は口座振替できないため会員詳細で設定してください。
   </div>
