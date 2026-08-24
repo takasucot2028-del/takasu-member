@@ -219,19 +219,24 @@ export function downloadCssExport(
   return rows.length - 1; // データ件数
 }
 
-// === 教室別集計表（当月の口座振替を教室ごとに集計） ===
+// === 教室別集計表（当月の口座振替を教室ごとに、会員明細つきで集計） ===
+export interface CourseTallyMember {
+  memberNumber: string; name: string; area: string; cssNumber: string; fee: number;
+}
 export interface CourseTallyRow {
-  courseId: string; name: string; paymentMethod: string; count: number; total: number;
+  courseId: string; name: string; paymentMethod: string;
+  count: number; total: number; members: CourseTallyMember[];
 }
 
 // 当月に請求される教室会費を教室ごとに集計する（請求生成と同じ課金判定）。
+// 教室ごとに口座振替する会員一覧と各会員の振替額（その教室の会費）を持たせる。
 // 特別徴収・団体請求・就学援助控除は教室単位でないため含めない（教室会費のみ）。
 export function buildCourseTally(
   yearMonth: string, members: Member[], courses: Course[], schedule: Record<string, number[]>
 ): CourseTallyRow[] {
   const month = parseInt(yearMonth.split('-')[1], 10);
   const byId = new Map(courses.map(c => [c.id, c]));
-  const tally = new Map<string, { count: number; total: number }>();
+  const roster = new Map<string, CourseTallyMember[]>();
   members
     .filter(m => !m.isWithdrawn && m.memberType !== 'group')
     .forEach(m => {
@@ -245,18 +250,36 @@ export function buildCourseTally(
         }
         if (!charge) return;
         const fee = m.areaType === 'in_town' ? c.feeInTown : c.feeOutOfTown;
-        const t = tally.get(cid) || { count: 0, total: 0 };
-        t.count += 1; t.total += fee;
-        tally.set(cid, t);
+        // 引落口座: 地域クラブは地域クラブ用CSS（未設定なら主CSS）、それ以外は主CSS
+        const primary = String(m.cssNumber ?? '').trim();
+        const css = c.category === 'community'
+          ? (String(m.cssNumberCommunity ?? '').trim() || primary)
+          : primary;
+        const list = roster.get(cid) || [];
+        list.push({
+          memberNumber: m.memberNumber,
+          name: `${m.lastName} ${m.firstName}`.trim(),
+          area: m.areaType === 'in_town' ? '町内' : '町外',
+          cssNumber: css,
+          fee,
+        });
+        roster.set(cid, list);
       });
     });
-  // 教室マスタの並び順で、当月請求がある教室のみ返す
+  // 教室マスタの並び順で、当月請求がある教室のみ返す（会員は会員番号順）
   return courses
-    .filter(c => tally.has(c.id))
-    .map(c => ({ courseId: c.id, name: c.name, paymentMethod: c.paymentMethod, count: tally.get(c.id)!.count, total: tally.get(c.id)!.total }));
+    .filter(c => roster.has(c.id))
+    .map(c => {
+      const ms = roster.get(c.id)!.sort((a, b) => a.memberNumber.localeCompare(b.memberNumber));
+      return {
+        courseId: c.id, name: c.name, paymentMethod: c.paymentMethod,
+        count: ms.length, total: ms.reduce((s, x) => s + x.fee, 0), members: ms,
+      };
+    });
 }
 
 // 教室別集計表を印刷用ウィンドウで開く（ブラウザの「PDFに保存」で出力）。
+// 教室ごとに口座振替する会員一覧と各会員の振替内容を表示する。
 // 日本語フォントをそのまま使えるよう、外部PDFライブラリではなく印刷方式を採用。
 export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]): boolean {
   const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -264,11 +287,24 @@ export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]):
   const totalCount = rows.reduce((s, r) => s + r.count, 0);
   const totalAmount = rows.reduce((s, r) => s + r.total, 0);
   const today = new Date().toLocaleDateString('ja-JP');
-  const body = rows.map(r =>
-    `<tr><td>${esc(r.name)}</td><td class="c">${esc(PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod)}</td>` +
-    `<td class="r">${r.count}名</td><td class="r">${r.total.toLocaleString()}円</td></tr>`
-  ).join('');
-  const empty = rows.length === 0 ? '<tr><td colspan="4" class="c muted">当月に請求される教室会費はありません</td></tr>' : '';
+
+  const sections = rows.map(r => {
+    const memberRows = r.members.map(mem =>
+      `<tr><td>${esc(mem.memberNumber)}</td><td>${esc(mem.name)}</td>` +
+      `<td class="c">${mem.area}</td>` +
+      `<td class="c">${mem.cssNumber ? esc(mem.cssNumber) : '<span class="miss">未設定</span>'}</td>` +
+      `<td class="r">${mem.fee.toLocaleString()}円</td></tr>`
+    ).join('');
+    return `<div class="course">
+      <h2>${esc(r.name)}<span class="pm">（${esc(PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod)}）</span></h2>
+      <table>
+        <thead><tr><th>会員番号</th><th>氏名</th><th class="c">区分</th><th class="c">CSS番号</th><th class="r">振替額</th></tr></thead>
+        <tbody>${memberRows}</tbody>
+        <tfoot><tr><td colspan="4">小計　${r.count}名</td><td class="r">${r.total.toLocaleString()}円</td></tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+  const empty = rows.length === 0 ? '<p class="muted">当月に請求される教室会費はありません。</p>' : '';
 
   const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <title>教室別集計表_${y}年${parseInt(m, 10)}月</title>
@@ -277,15 +313,20 @@ export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]):
   body { font-family: "Yu Gothic","Meiryo",sans-serif; color:#1e2a32; margin:24px; }
   h1 { font-size:20px; margin:0 0 4px; }
   .sub { color:#5e6e78; font-size:12px; margin-bottom:16px; }
-  table { border-collapse:collapse; width:100%; font-size:13px; }
-  th,td { border:1px solid #c9d2d8; padding:7px 10px; }
+  .course { margin-bottom:22px; page-break-inside:avoid; }
+  h2 { font-size:15px; margin:0 0 6px; padding-bottom:3px; border-bottom:2px solid #12324a; }
+  h2 .pm { font-size:12px; color:#5e6e78; font-weight:normal; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th,td { border:1px solid #c9d2d8; padding:5px 9px; }
   th { background:#12324a; color:#fff; text-align:left; }
   td.r,th.r { text-align:right; }
   td.c,th.c { text-align:center; }
-  tr:nth-child(even) td { background:#f4f7f9; }
-  tfoot td { font-weight:bold; background:#e8eef2 !important; }
+  tbody tr:nth-child(even) td { background:#f4f7f9; }
+  tfoot td { font-weight:bold; background:#e8eef2; }
+  .miss { color:#c0392b; }
+  .grand { margin-top:8px; font-size:14px; font-weight:bold; text-align:right; }
   .muted { color:#8a97a0; }
-  .note { color:#5e6e78; font-size:11px; margin-top:12px; line-height:1.6; }
+  .note { color:#5e6e78; font-size:11px; margin-top:14px; line-height:1.6; }
   .btns { margin-bottom:16px; }
   button { font-size:13px; padding:8px 16px; margin-right:8px; cursor:pointer; }
   @media print { .btns { display:none; } body { margin:0; } }
@@ -294,16 +335,14 @@ export function openCourseSummaryPdf(yearMonth: string, rows: CourseTallyRow[]):
     <button onclick="window.print()">印刷 / PDFに保存</button>
     <button onclick="window.close()">閉じる</button>
   </div>
-  <h1>教室別集計表（口座振替）</h1>
+  <h1>教室別 口座振替明細</h1>
   <div class="sub">${y}年${parseInt(m, 10)}月分　／　出力日: ${today}　／　一般社団法人たかすスポーツクラブ</div>
-  <table>
-    <thead><tr><th>教室名</th><th class="c">支払方式</th><th class="r">人数</th><th class="r">金額</th></tr></thead>
-    <tbody>${body}${empty}</tbody>
-    <tfoot><tr><td>合計</td><td class="c">${rows.length}教室</td><td class="r">${totalCount}名</td><td class="r">${totalAmount.toLocaleString()}円</td></tr></tfoot>
-  </table>
+  ${sections}${empty}
+  <div class="grand">総合計　${rows.length}教室　${totalCount}名（延べ）　${totalAmount.toLocaleString()}円</div>
   <div class="note">
-    ※ 当月に請求される教室会費（継続会費のうち教室・委託・地域クラブの参加費）を教室ごとに集計しています。<br>
-    ※ 特別徴収・団体請求・就学援助控除は教室単位ではないため含みません。人数は延べ人数（複数教室に参加する会員は各教室で計上）です。
+    ※ 当月に口座振替する教室会費を教室ごとに、会員別の振替額つきで一覧化しています（振替額＝その教室の当月会費）。<br>
+    ※ CSS番号は引落口座（地域クラブは地域クラブ用CSS／未設定なら主CSS）。「未設定」の会員は口座振替できないため会員詳細で設定してください。<br>
+    ※ 年会費・保険料・特別徴収・団体請求・就学援助控除は教室単位ではないため含みません。複数教室の会員は各教室に計上（延べ人数）。
   </div>
   <script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
