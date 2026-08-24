@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { PageContainer, Card, Input, Button, Table, Th, Td, Badge, Alert } from '../../components/UI';
 import { BILLING_STATUS_LABELS } from '../../utils/constants';
-import { getAllMembers, getBillingByMonth, getAllGroupBillings, bulkUpdateCss } from '../../api/data';
-import { downloadCssExport, downloadResultReport, matchCssNumbers, type CssMatchResult } from '../../utils/transfer';
+import { useCourses } from '../../components/CoursesContext';
+import { getAllMembers, getBillingByMonth, getAllGroupBillings, bulkUpdateCss, getBillingSchedule } from '../../api/data';
+import { downloadCssExport, downloadResultReport, matchCssNumbers, buildCourseTally, openCourseSummaryPdf, type CssMatchResult } from '../../utils/transfer';
 import type { Member, BillingRecord, GroupBilling } from '../../types';
 
 function currentYearMonth(): string {
@@ -11,6 +12,7 @@ function currentYearMonth(): string {
 }
 
 export default function Transfer() {
+  const { courses } = useCourses();
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
   const [members, setMembers] = useState<Member[]>([]);
   const [billing, setBilling] = useState<BillingRecord[]>([]);
@@ -62,6 +64,15 @@ export default function Transfer() {
     downloadResultReport(yearMonth, bills);
     setMsg('振替結果帳票を出力しました');
   };
+  // 教室別集計表をPDF（印刷）で出力する
+  const exportCoursePdf = async () => {
+    const [mems, schedule] = await Promise.all([getAllMembers(), getBillingSchedule()]);
+    const rows = buildCourseTally(yearMonth, mems, courses, schedule);
+    const ok = openCourseSummaryPdf(yearMonth, rows);
+    setMsg(ok
+      ? '教室別集計表を開きました。印刷ダイアログで「PDFに保存」を選んでください。'
+      : 'ポップアップがブロックされました。このサイトのポップアップを許可してから再度お試しください。');
+  };
 
   const handleCssFile = async (file: File) => {
     setMsg('');
@@ -103,9 +114,11 @@ export default function Transfer() {
           <div className="flex flex-wrap gap-3">
             <Button onClick={exportCss}>口座振替データ出力（CSS様式）</Button>
             <Button variant="secondary" onClick={exportResult}>振替結果帳票出力</Button>
+            <Button variant="secondary" onClick={exportCoursePdf}>教室別集計表（PDF）</Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
             その月に引き落とす継続会費（特別徴収含む）と、引落日が当月の団体請求を、CSS番号（家庭）ごとに合算して出力します。
+            「教室別集計表（PDF）」は当月の教室会費を教室ごとに集計して印刷（PDF保存）します。
           </p>
 
           {missingCss.length > 0 && (
