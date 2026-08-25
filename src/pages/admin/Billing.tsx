@@ -81,11 +81,15 @@ export default function Billing() {
     // 年会費の計上判定: 継続会員は4月、年度途中入会は入会翌月
     const annualDue = (m: Member) =>
       month === 4 ? (!!m.registeredAt && m.registeredAt < `${year}-04-01`) : (monthAfter(m.registeredAt) === yearMonth);
-    // 保険料の計上判定: 一般会員以外＋加入者。継続は4月、年度途中加入は加入翌月
+    // 保険料の計上判定: 一般会員以外＋加入者。
+    // 継続（当年度4/1以前の加入＝年度更新で4/1に更新された継続者を含む）は4月に計上。
+    // 年度途中の加入（4/1より後）は加入翌月に計上（4月計上分と二重にならないよう限定）。
     const insuranceDue = (m: Member) => {
       if (m.memberType === 'general' || !m.insuranceEnrolled) return false;
       const at = m.insuranceEnrolledAt || '';
-      return month === 4 ? (!!at && at < `${year}-04-01`) : (monthAfter(at) === yearMonth);
+      if (!at) return false;
+      const fyStart = `${year}-04-01`;
+      return month === 4 ? at <= fyStart : (at > fyStart && monthAfter(at) === yearMonth);
     };
 
     const build = (m: { id: string; memberNumber: string; memberName: string }, f: Fees, subsidy: number, isRetry: boolean): BillingRecord => ({
